@@ -19,9 +19,9 @@ class WiFiSniffer:
         import subprocess
 
         try:
-            subprocess.run(['sudo', 'ifconfig', self.interface, 'down'], check=True, capture_output=True)
-            subprocess.run(['sudo', 'iwconfig', self.interface, 'mode', 'monitor'], check=True, capture_output=True)
-            subprocess.run(['sudo', 'ifconfig', self.interface, 'up'], check=True, capture_output=True)
+            subprocess.run(['ifconfig', self.interface, 'down'], check=True, capture_output=True)
+            subprocess.run(['iwconfig', self.interface, 'mode', 'monitor'], check=True, capture_output=True)
+            subprocess.run(['ifconfig', self.interface, 'up'], check=True, capture_output=True)
             logger.info(f"Set {self.interface} to monitor mode")
             return True
         except subprocess.CalledProcessError as e:
@@ -31,7 +31,7 @@ class WiFiSniffer:
     def _set_channel(self, channel: int) -> None:
         import subprocess
         try:
-            subprocess.run(['sudo', 'iwconfig', self.interface, 'channel', str(channel)],
+            subprocess.run(['iwconfig', self.interface, 'channel', str(channel)],
                          check=True, capture_output=True, timeout=1)
             self.current_channel = channel
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
