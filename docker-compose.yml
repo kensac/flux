@@ -19,9 +19,6 @@ services:
         limits:
           cpus: '1.0'
           memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -40,9 +37,6 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   sniffer:
     build: .
@@ -65,9 +59,6 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
 volumes:
   mongodb_data:
