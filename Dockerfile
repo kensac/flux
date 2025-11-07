@@ -1,17 +1,19 @@
-FROM python:3.11-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpcap-dev \
+    libmongoc-dev \
+    libbson-dev \
     wireless-tools \
-    net-tools \
     iw \
-    aircrack-ng \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY Makefile .
+COPY src/ ./src/
 
-COPY . .
+RUN make
 
-CMD ["python", "main.py"]
+CMD ["./flux"]

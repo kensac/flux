@@ -1,19 +1,23 @@
 # Flux WiFi Sniffer
 
-WiFi presence detection system for Raspberry Pi 4 with Qualcomm Atheros AR9271.
-
-Captures probe requests and beacons, tracks devices, stores data in MongoDB, publishes events to RabbitMQ.
+High-performance WiFi presence detection system in C for Raspberry Pi 4.
 
 ## Setup
 
+Put WiFi adapter in monitor mode:
+```bash
+sudo ip link set wlan0 down
+sudo iw wlan0 set monitor control
+sudo ip link set wlan0 up
+```
+
+Start:
 ```bash
 docker-compose up -d
 ```
 
-Check your WiFi interface name and update the `INTERFACE` env var in docker-compose.yml if needed.
+## Data
 
-## Data Access
-
-- MongoDB: `localhost:27017` (database: `flux`)
-- RabbitMQ Management: `http://localhost:15672`
-- Logs: `./flux.log`
+MongoDB: `localhost:27017` (database: `flux`)
+- Collection: `devices` - captured MAC addresses with timestamps
+- Collection: `access_points` - beacon frames with SSIDs/channels
