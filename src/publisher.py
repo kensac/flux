@@ -1,11 +1,9 @@
 import logging
 import threading
 import time
-from datetime import datetime
 from typing import Optional
-from src.config import MONGODB_URI, MONGODB_DB, RABBITMQ_HOST, RABBITMQ_QUEUE, BATCH_SIZE, BATCH_INTERVAL
+from src.config import MONGODB_URI, MONGODB_DB, BATCH_INTERVAL
 from src.database import Database
-from src.queue import MessageQueue
 from src.models import Device, AccessPoint
 from src.vendor_lookup import VendorLookup
 
@@ -14,7 +12,6 @@ logger = logging.getLogger(__name__)
 class Publisher:
     def __init__(self):
         self.db = Database(MONGODB_URI, MONGODB_DB)
-        self.queue = MessageQueue(RABBITMQ_HOST, RABBITMQ_QUEUE)
         self.device_batch: list[Device] = []
         self.ap_batch: list[AccessPoint] = []
         self.lock = threading.Lock()
@@ -22,9 +19,7 @@ class Publisher:
         self.flush_thread: Optional[threading.Thread] = None
 
     def connect(self) -> bool:
-        db_ok = self.db.connect()
-        queue_ok = self.queue.connect()
-        return db_ok and queue_ok
+        return self.db.connect()
 
     def on_device(self, device: Device, is_new: bool) -> None:
         if is_new and not device.vendor:
@@ -35,27 +30,9 @@ class Publisher:
         with self.lock:
             self.device_batch.append(device)
 
-        if is_new:
-            self.queue.publish({
-                "event_type": "device_discovered",
-                "mac_address": device.mac_address,
-                "timestamp": datetime.now().isoformat(),
-                "rssi": device.rssi_values[-1] if device.rssi_values else None,
-                "vendor": device.vendor
-            })
-
     def on_access_point(self, ap: AccessPoint, is_new: bool) -> None:
         with self.lock:
             self.ap_batch.append(ap)
-
-        if is_new:
-            self.queue.publish({
-                "event_type": "ap_discovered",
-                "bssid": ap.bssid,
-                "ssid": ap.ssid,
-                "timestamp": datetime.now().isoformat(),
-                "channel": ap.channel
-            })
 
     def _flush_batches(self) -> None:
         while self.running:
@@ -95,5 +72,4 @@ class Publisher:
                 self.db.upsert_access_point(ap)
 
         self.db.close()
-        self.queue.close()
         logger.info("Publisher stopped")

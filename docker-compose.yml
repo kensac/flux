@@ -20,24 +20,6 @@ services:
           cpus: '1.0'
           memory: 512M
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    restart: "no"
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-
   sniffer:
     build: .
     restart: "no"
@@ -46,11 +28,8 @@ services:
     environment:
       - INTERFACE=wlan0
       - MONGODB_URI=mongodb://127.0.0.1:27017/
-      - RABBITMQ_HOST=127.0.0.1
     depends_on:
       mongodb:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     volumes:
       - ./:/app
