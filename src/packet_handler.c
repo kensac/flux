@@ -25,6 +25,7 @@ typedef struct {
 } __attribute__((packed)) radiotap_hdr_t;
 
 static void handle_beacon(sniffer_t *sniffer, const ieee80211_hdr_t *hdr, const uint8_t *body, uint32_t body_len) {
+    static int beacon_count = 0;
     char ssid[33] = {0};
     int channel = 0;
 
@@ -50,10 +51,25 @@ static void handle_beacon(sniffer_t *sniffer, const ieee80211_hdr_t *hdr, const 
         }
     }
 
+    beacon_count++;
+    if (beacon_count <= 5) {
+        printf("Beacon from %02x:%02x:%02x:%02x:%02x:%02x SSID=%s CH=%d\n",
+               hdr->addr3[0], hdr->addr3[1], hdr->addr3[2],
+               hdr->addr3[3], hdr->addr3[4], hdr->addr3[5],
+               ssid[0] ? ssid : "(hidden)", channel);
+    }
+
     http_post_ap(sniffer->api_url, hdr->addr3, ssid, channel, -50);
 }
 
 static void handle_probe_req(sniffer_t *sniffer, const ieee80211_hdr_t *hdr) {
+    static int probe_count = 0;
+    probe_count++;
+    if (probe_count <= 5) {
+        printf("Probe from %02x:%02x:%02x:%02x:%02x:%02x\n",
+               hdr->addr2[0], hdr->addr2[1], hdr->addr2[2],
+               hdr->addr2[3], hdr->addr2[4], hdr->addr2[5]);
+    }
     http_post_device(sniffer->api_url, hdr->addr2, -60);
 }
 

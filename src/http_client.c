@@ -9,7 +9,10 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb, void *us
 
 void http_post_device(const char *api_url, const uint8_t *mac, int rssi) {
     CURL *curl = curl_easy_init();
-    if (!curl) return;
+    if (!curl) {
+        fprintf(stderr, "Failed to init curl\n");
+        return;
+    }
 
     char url[256];
     snprintf(url, sizeof(url), "%s/ingest/device", api_url);
@@ -28,7 +31,14 @@ void http_post_device(const char *api_url, const uint8_t *mac, int rssi) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2L);
 
-    curl_easy_perform(curl);
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        static int error_count = 0;
+        if (error_count < 5) {
+            fprintf(stderr, "Device POST failed: %s\n", curl_easy_strerror(res));
+            error_count++;
+        }
+    }
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
@@ -36,7 +46,10 @@ void http_post_device(const char *api_url, const uint8_t *mac, int rssi) {
 
 void http_post_ap(const char *api_url, const uint8_t *bssid, const char *ssid, int channel, int rssi) {
     CURL *curl = curl_easy_init();
-    if (!curl) return;
+    if (!curl) {
+        fprintf(stderr, "Failed to init curl\n");
+        return;
+    }
 
     char url[256];
     snprintf(url, sizeof(url), "%s/ingest/access-point", api_url);
@@ -56,7 +69,14 @@ void http_post_ap(const char *api_url, const uint8_t *bssid, const char *ssid, i
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2L);
 
-    curl_easy_perform(curl);
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        static int error_count = 0;
+        if (error_count < 5) {
+            fprintf(stderr, "AP POST failed: %s\n", curl_easy_strerror(res));
+            error_count++;
+        }
+    }
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
