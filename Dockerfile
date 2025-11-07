@@ -16,4 +16,4 @@ COPY Makefile .
 
 RUN make clean || true && make -B && ls -la && test -f flux-sniffer
 
-CMD ["./flux-sniffer", "wlan0"]
+CMD ["./flux-sniffer", "wlx24ec998bf0ce"]
