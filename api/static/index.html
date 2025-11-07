@@ -19,24 +19,20 @@
     <hr>
 
     <h2>Channel Hopping Control</h2>
-    <div style="background: #f0f0f0; padding: 10px; border-radius: 5px;">
-        <p>
-            <label>
-                <input type="checkbox" id="channelHoppingEnabled" onchange="updateChannelHopping()">
-                Enable Channel Hopping
-            </label>
-        </p>
-        <p>
-            <label>
-                Timeout (ms):
-                <input type="number" id="channelHoppingTimeout" min="50" max="10000" step="50" value="300" onchange="updateChannelHopping()" style="width: 80px;">
-            </label>
-            <span style="font-size: 0.9em; color: #666;">(50-10000ms, smaller = faster hopping)</span>
-        </p>
-        <p style="font-size: 0.9em; color: #666;">
-            Status: <span id="channelHoppingStatus">-</span>
-        </p>
-    </div>
+    <p>
+        <label>
+            <input type="checkbox" id="channelHoppingEnabled" onchange="updateChannelHopping()">
+            Enable Channel Hopping
+        </label>
+    </p>
+    <p>
+        <label>
+            Timeout (ms):
+            <input type="number" id="channelHoppingTimeout" min="50" max="10000" step="50" value="300" onchange="updateChannelHopping()">
+        </label>
+        (50-10000ms)
+    </p>
+    <p>Status: <span id="channelHoppingStatus">-</span></p>
 
     <hr>
 
