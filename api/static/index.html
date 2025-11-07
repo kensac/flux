@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flux WiFi Sniffer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #0f0;
+        }
+        h1 { margin-bottom: 20px; font-size: 24px; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .stat-box {
+            border: 1px solid #0f0;
+            padding: 15px;
+            background: #000;
+        }
+        .stat-value { font-size: 32px; font-weight: bold; }
+        .stat-label { font-size: 12px; opacity: 0.7; margin-top: 5px; }
+        .section { margin-bottom: 30px; }
+        h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #0f0;
+        }
+        th { background: #001100; font-weight: bold; }
+        tr:hover { background: #001100; }
+        .refresh-btn {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: monospace;
+            margin-bottom: 20px;
+        }
+        .refresh-btn:hover { background: #001100; }
+        .time { opacity: 0.7; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <h1>FLUX WiFi Sniffer</h1>
+
+    <button class="refresh-btn" onclick="loadAll()">REFRESH</button>
+
+    <div class="stats" id="stats">
+        <div class="stat-box">
+            <div class="stat-value" id="totalDevices">-</div>
+            <div class="stat-label">TOTAL DEVICES</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="activeDevices">-</div>
+            <div class="stat-label">ACTIVE DEVICES (5min)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="totalAPs">-</div>
+            <div class="stat-label">TOTAL APs</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="activeAPs">-</div>
+            <div class="stat-label">ACTIVE APs (5min)</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>ACTIVE DEVICES</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>MAC Address</th>
+                    <th>Vendor</th>
+                    <th>Last Seen</th>
+                    <th>Packets</th>
+                    <th>Avg RSSI</th>
+                </tr>
+            </thead>
+            <tbody id="devicesTable"></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>ACCESS POINTS</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>SSID</th>
+                    <th>BSSID</th>
+                    <th>Channel</th>
+                    <th>Encryption</th>
+                    <th>Last Seen</th>
+                    <th>Beacons</th>
+                </tr>
+            </thead>
+            <tbody id="apsTable"></tbody>
+        </table>
+    </div>
+
+    <div class="time">Last updated: <span id="lastUpdate">-</span></div>
+
+    <script>
+        const API_BASE = '';
+
+        function formatTime(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            return d.toLocaleString();
+        }
+
+        function avgRSSI(values) {
+            if (!values || values.length === 0) return '-';
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            return avg.toFixed(0) + ' dBm';
+        }
+
+        async function loadStats() {
+            const res = await fetch(API_BASE + '/stats');
+            const data = await res.json();
+            document.getElementById('totalDevices').textContent = data.total_devices;
+            document.getElementById('activeDevices').textContent = data.active_devices;
+            document.getElementById('totalAPs').textContent = data.total_aps;
+            document.getElementById('activeAPs').textContent = data.active_aps;
+        }
+
+        async function loadDevices() {
+            const res = await fetch(API_BASE + '/devices/active?minutes=5');
+            const devices = await res.json();
+            const tbody = document.getElementById('devicesTable');
+            tbody.innerHTML = devices.map(d => `
+                <tr>
+                    <td>${d.mac_address}</td>
+                    <td>${d.vendor || '-'}</td>
+                    <td>${formatTime(d.last_seen)}</td>
+                    <td>${d.packet_count || 0}</td>
+                    <td>${avgRSSI(d.rssi_values)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadAPs() {
+            const res = await fetch(API_BASE + '/access-points?limit=50');
+            const aps = await res.json();
+            const tbody = document.getElementById('apsTable');
+            tbody.innerHTML = aps.map(ap => `
+                <tr>
+                    <td>${ap.ssid || '(hidden)'}</td>
+                    <td>${ap.bssid}</td>
+                    <td>${ap.channel || '-'}</td>
+                    <td>${ap.encryption || '-'}</td>
+                    <td>${formatTime(ap.last_seen)}</td>
+                    <td>${ap.beacon_count || 0}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadAll() {
+            await Promise.all([loadStats(), loadDevices(), loadAPs()]);
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+        }
+
+        loadAll();
+        setInterval(loadAll, 5000);
+    </script>
+</body>
+</html>

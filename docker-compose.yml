@@ -8,6 +8,8 @@ services:
       - mongodb_data:/data/db
     ports:
       - "27017:27017"
+    networks:
+      - flux-network
     healthcheck:
       test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -37,5 +39,28 @@ services:
           cpus: '1.0'
           memory: 1G
 
+  api:
+    build: ./api
+    restart: "no"
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - PORT=8080
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - flux-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
 volumes:
   mongodb_data:
+
+networks:
+  flux-network:
+    driver: bridge
