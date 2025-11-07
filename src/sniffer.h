@@ -4,12 +4,14 @@
 #include <pcap.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 typedef struct {
     char interface[16];
     char api_url[256];
     pcap_t *handle;
     bool running;
+    pthread_t hopper_thread;
 } sniffer_t;
 
 int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url);

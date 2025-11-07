@@ -3,6 +3,32 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/wait.h>
+
+static void set_channel(const char *interface, int channel) {
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "iw dev %s set channel %d 2>/dev/null", interface, channel);
+    system(cmd);
+}
+
+static void* channel_hopper(void *arg) {
+    sniffer_t *sniffer = (sniffer_t *)arg;
+    int channels[] = {1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10};
+    int num_channels = sizeof(channels) / sizeof(channels[0]);
+    int idx = 0;
+
+    printf("Channel hopping started\n");
+
+    while (sniffer->running) {
+        set_channel(sniffer->interface, channels[idx]);
+        idx = (idx + 1) % num_channels;
+        usleep(300000);
+    }
+
+    return NULL;
+}
 
 int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url) {
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -24,6 +50,13 @@ int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url)
     }
 
     sniffer->running = true;
+
+    if (pthread_create(&sniffer->hopper_thread, NULL, channel_hopper, sniffer) != 0) {
+        fprintf(stderr, "Failed to create channel hopper thread\n");
+        pcap_close(sniffer->handle);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -43,6 +76,7 @@ void sniffer_stop(sniffer_t *sniffer) {
     if (sniffer->handle) {
         pcap_breakloop(sniffer->handle);
     }
+    pthread_join(sniffer->hopper_thread, NULL);
 }
 
 void sniffer_cleanup(sniffer_t *sniffer) {
