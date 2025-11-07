@@ -113,6 +113,13 @@ static void handle_probe_req(sniffer_t *sniffer, const ieee80211_hdr_t *hdr) {
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
     sniffer_t *sniffer = (sniffer_t *)args;
+    static uint32_t packet_count = 0;
+
+    packet_count++;
+    if (packet_count % 100 == 0) {
+        printf("Processed %u packets...\n", packet_count);
+        fflush(stdout);
+    }
 
     if (header->len < sizeof(radiotap_hdr_t)) return;
 

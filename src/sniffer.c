@@ -27,6 +27,9 @@ int sniffer_init(sniffer_t *sniffer, const char *interface) {
 }
 
 int sniffer_start(sniffer_t *sniffer) {
+    printf("Starting packet capture loop...\n");
+    fflush(stdout);
+
     if (pcap_loop(sniffer->handle, -1, packet_handler, (u_char *)sniffer) == -1) {
         fprintf(stderr, "Error in pcap_loop: %s\n", pcap_geterr(sniffer->handle));
         return -1;
