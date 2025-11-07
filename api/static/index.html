@@ -4,122 +4,65 @@
     <title>Flux WiFi Sniffer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: monospace;
-            padding: 20px;
-            background: #0a0a0a;
-            color: #0f0;
-        }
-        h1 { margin-bottom: 20px; font-size: 24px; }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        .stat-box {
-            border: 1px solid #0f0;
-            padding: 15px;
-            background: #000;
-        }
-        .stat-value { font-size: 32px; font-weight: bold; }
-        .stat-label { font-size: 12px; opacity: 0.7; margin-top: 5px; }
-        .section { margin-bottom: 30px; }
-        h2 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #0f0;
-            padding-bottom: 5px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border: 1px solid #0f0;
-        }
-        th { background: #001100; font-weight: bold; }
-        tr:hover { background: #001100; }
-        .refresh-btn {
-            background: #000;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-family: monospace;
-            margin-bottom: 20px;
-        }
-        .refresh-btn:hover { background: #001100; }
-        .time { opacity: 0.7; font-size: 10px; }
-    </style>
 </head>
 <body>
-    <h1>FLUX WiFi Sniffer</h1>
+    <h1>Flux WiFi Sniffer</h1>
 
-    <button class="refresh-btn" onclick="loadAll()">REFRESH</button>
+    <button onclick="loadAll()">Refresh</button>
 
-    <div class="stats" id="stats">
-        <div class="stat-box">
-            <div class="stat-value" id="totalDevices">-</div>
-            <div class="stat-label">TOTAL DEVICES</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-value" id="activeDevices">-</div>
-            <div class="stat-label">ACTIVE DEVICES (5min)</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-value" id="totalAPs">-</div>
-            <div class="stat-label">TOTAL APs</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-value" id="activeAPs">-</div>
-            <div class="stat-label">ACTIVE APs (5min)</div>
-        </div>
-    </div>
+    <h2>Stats</h2>
+    <p>Total Devices: <span id="totalDevices">-</span></p>
+    <p>Active Devices (5min): <span id="activeDevices">-</span></p>
+    <p>Total APs: <span id="totalAPs">-</span></p>
+    <p>Active APs (5min): <span id="activeAPs">-</span></p>
 
-    <div class="section">
-        <h2>ACTIVE DEVICES</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>MAC Address</th>
-                    <th>Vendor</th>
-                    <th>Probe SSIDs</th>
-                    <th>Last Seen</th>
-                    <th>Packets</th>
-                    <th>Avg RSSI</th>
-                </tr>
-            </thead>
-            <tbody id="devicesTable"></tbody>
-        </table>
-    </div>
+    <hr>
 
-    <div class="section">
-        <h2>ACCESS POINTS</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>SSID</th>
-                    <th>BSSID</th>
-                    <th>Channel</th>
-                    <th>Encryption</th>
-                    <th>Last Seen</th>
-                    <th>Beacons</th>
-                </tr>
-            </thead>
-            <tbody id="apsTable"></tbody>
-        </table>
-    </div>
+    <h2>Active Devices</h2>
+    <input type="text" id="deviceSearch" placeholder="Search devices..." onkeyup="filterDevices()">
+    <table border="1" id="devicesTable">
+        <thead>
+            <tr>
+                <th onclick="sortDevices('mac_address')">MAC Address</th>
+                <th onclick="sortDevices('vendor')">Vendor</th>
+                <th onclick="sortDevices('probe_ssids')">Probe SSIDs</th>
+                <th onclick="sortDevices('last_seen')">Last Seen</th>
+                <th onclick="sortDevices('packet_count')">Packets</th>
+                <th onclick="sortDevices('rssi')">Avg RSSI</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-    <div class="time">Last updated: <span id="lastUpdate">-</span></div>
+    <hr>
+
+    <h2>Access Points</h2>
+    <input type="text" id="apSearch" placeholder="Search APs..." onkeyup="filterAPs()">
+    <table border="1" id="apsTable">
+        <thead>
+            <tr>
+                <th onclick="sortAPs('ssid')">SSID</th>
+                <th onclick="sortAPs('bssid')">BSSID</th>
+                <th onclick="sortAPs('channel')">Channel</th>
+                <th onclick="sortAPs('encryption')">Encryption</th>
+                <th onclick="sortAPs('last_seen')">Last Seen</th>
+                <th onclick="sortAPs('beacon_count')">Beacons</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <hr>
+    <p>Last updated: <span id="lastUpdate">-</span></p>
 
     <script>
         const API_BASE = '';
+        let devicesData = [];
+        let apsData = [];
+        let deviceSortKey = 'last_seen';
+        let deviceSortAsc = false;
+        let apSortKey = 'last_seen';
+        let apSortAsc = false;
 
         function formatTime(ts) {
             if (!ts) return '-';
@@ -133,6 +76,11 @@
             return avg.toFixed(0) + ' dBm';
         }
 
+        function avgRSSIValue(values) {
+            if (!values || values.length === 0) return -999;
+            return values.reduce((a, b) => a + b, 0) / values.length;
+        }
+
         async function loadStats() {
             const res = await fetch(API_BASE + '/stats');
             const data = await res.json();
@@ -144,9 +92,64 @@
 
         async function loadDevices() {
             const res = await fetch(API_BASE + '/devices/active?minutes=5');
-            const devices = await res.json();
-            const tbody = document.getElementById('devicesTable');
-            tbody.innerHTML = devices.map(d => `
+            devicesData = await res.json();
+            renderDevices();
+        }
+
+        async function loadAPs() {
+            const res = await fetch(API_BASE + '/access-points?limit=100');
+            apsData = await res.json();
+            renderAPs();
+        }
+
+        function sortDevices(key) {
+            if (deviceSortKey === key) {
+                deviceSortAsc = !deviceSortAsc;
+            } else {
+                deviceSortKey = key;
+                deviceSortAsc = true;
+            }
+            renderDevices();
+        }
+
+        function sortAPs(key) {
+            if (apSortKey === key) {
+                apSortAsc = !apSortAsc;
+            } else {
+                apSortKey = key;
+                apSortAsc = true;
+            }
+            renderAPs();
+        }
+
+        function renderDevices() {
+            const search = document.getElementById('deviceSearch').value.toLowerCase();
+            let filtered = devicesData.filter(d =>
+                d.mac_address.toLowerCase().includes(search) ||
+                (d.vendor && d.vendor.toLowerCase().includes(search)) ||
+                (d.probe_ssids && d.probe_ssids.some(s => s.toLowerCase().includes(search)))
+            );
+
+            filtered.sort((a, b) => {
+                let aVal, bVal;
+                if (deviceSortKey === 'rssi') {
+                    aVal = avgRSSIValue(a.rssi_values);
+                    bVal = avgRSSIValue(b.rssi_values);
+                } else if (deviceSortKey === 'probe_ssids') {
+                    aVal = a.probe_ssids ? a.probe_ssids.join(',') : '';
+                    bVal = b.probe_ssids ? b.probe_ssids.join(',') : '';
+                } else {
+                    aVal = a[deviceSortKey] || '';
+                    bVal = b[deviceSortKey] || '';
+                }
+
+                if (aVal < bVal) return deviceSortAsc ? -1 : 1;
+                if (aVal > bVal) return deviceSortAsc ? 1 : -1;
+                return 0;
+            });
+
+            const tbody = document.getElementById('devicesTable').querySelector('tbody');
+            tbody.innerHTML = filtered.map(d => `
                 <tr>
                     <td>${d.mac_address}</td>
                     <td>${d.vendor || '-'}</td>
@@ -158,11 +161,24 @@
             `).join('');
         }
 
-        async function loadAPs() {
-            const res = await fetch(API_BASE + '/access-points?limit=50');
-            const aps = await res.json();
-            const tbody = document.getElementById('apsTable');
-            tbody.innerHTML = aps.map(ap => `
+        function renderAPs() {
+            const search = document.getElementById('apSearch').value.toLowerCase();
+            let filtered = apsData.filter(ap =>
+                (ap.ssid && ap.ssid.toLowerCase().includes(search)) ||
+                ap.bssid.toLowerCase().includes(search)
+            );
+
+            filtered.sort((a, b) => {
+                let aVal = a[apSortKey] || '';
+                let bVal = b[apSortKey] || '';
+
+                if (aVal < bVal) return apSortAsc ? -1 : 1;
+                if (aVal > bVal) return apSortAsc ? 1 : -1;
+                return 0;
+            });
+
+            const tbody = document.getElementById('apsTable').querySelector('tbody');
+            tbody.innerHTML = filtered.map(ap => `
                 <tr>
                     <td>${ap.ssid || '(hidden)'}</td>
                     <td>${ap.bssid}</td>
@@ -172,6 +188,14 @@
                     <td>${ap.beacon_count || 0}</td>
                 </tr>
             `).join('');
+        }
+
+        function filterDevices() {
+            renderDevices();
+        }
+
+        function filterAPs() {
+            renderAPs();
         }
 
         async function loadAll() {
