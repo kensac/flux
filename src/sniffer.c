@@ -8,8 +8,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <time.h>
-
-#define CONFIG_FILE "/tmp/flux_channel_config.json"
+#include <curl/curl.h>
 
 static void set_channel(const char *interface, int channel) {
     char cmd[256];
@@ -17,36 +16,82 @@ static void set_channel(const char *interface, int channel) {
     system(cmd);
 }
 
-// Read channel hopping config from JSON file
+// Buffer to store API response
+struct curl_response {
+    char *data;
+    size_t size;
+};
+
+static size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
+    size_t realsize = size * nmemb;
+    struct curl_response *mem = (struct curl_response *)userp;
+
+    char *ptr = realloc(mem->data, mem->size + realsize + 1);
+    if (!ptr) {
+        fprintf(stderr, "Not enough memory for config response\n");
+        return 0;
+    }
+
+    mem->data = ptr;
+    memcpy(&(mem->data[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->data[mem->size] = 0;
+
+    return realsize;
+}
+
+// Read channel hopping config from API
 static void read_config(sniffer_t *sniffer) {
-    FILE *f = fopen(CONFIG_FILE, "r");
-    if (!f) {
-        // Default values if file doesn't exist
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        fprintf(stderr, "Failed to init curl for config fetch\n");
         sniffer->hopping_enabled = true;
         sniffer->hopping_timeout_ms = 300;
         return;
     }
 
-    char buffer[256];
-    size_t len = fread(buffer, 1, sizeof(buffer) - 1, f);
-    buffer[len] = '\0';
-    fclose(f);
+    char url[512];
+    snprintf(url, sizeof(url), "%s/config/channel-hopping", sniffer->api_url);
+
+    struct curl_response response = {0};
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        // Use defaults on error
+        sniffer->hopping_enabled = true;
+        sniffer->hopping_timeout_ms = 300;
+        curl_easy_cleanup(curl);
+        if (response.data) free(response.data);
+        return;
+    }
 
     // Simple JSON parsing - look for "enabled" and "timeout_ms" fields
-    char *enabled_ptr = strstr(buffer, "\"enabled\":");
-    if (enabled_ptr) {
-        enabled_ptr += 10; // Skip past "enabled":
-        while (*enabled_ptr == ' ') enabled_ptr++;
-        sniffer->hopping_enabled = (strncmp(enabled_ptr, "true", 4) == 0);
+    if (response.data) {
+        char *enabled_ptr = strstr(response.data, "\"enabled\":");
+        if (enabled_ptr) {
+            enabled_ptr += 10; // Skip past "enabled":
+            while (*enabled_ptr == ' ') enabled_ptr++;
+            sniffer->hopping_enabled = (strncmp(enabled_ptr, "true", 4) == 0);
+        }
+
+        char *timeout_ptr = strstr(response.data, "\"timeout_ms\":");
+        if (timeout_ptr) {
+            timeout_ptr += 13; // Skip past "timeout_ms":
+            sniffer->hopping_timeout_ms = atoi(timeout_ptr);
+            if (sniffer->hopping_timeout_ms < 50) sniffer->hopping_timeout_ms = 50;
+            if (sniffer->hopping_timeout_ms > 10000) sniffer->hopping_timeout_ms = 10000;
+        }
+
+        free(response.data);
     }
 
-    char *timeout_ptr = strstr(buffer, "\"timeout_ms\":");
-    if (timeout_ptr) {
-        timeout_ptr += 13; // Skip past "timeout_ms":
-        sniffer->hopping_timeout_ms = atoi(timeout_ptr);
-        if (sniffer->hopping_timeout_ms < 50) sniffer->hopping_timeout_ms = 50;
-        if (sniffer->hopping_timeout_ms > 10000) sniffer->hopping_timeout_ms = 10000;
-    }
+    curl_easy_cleanup(curl);
 }
 
 static void* channel_hopper(void *arg) {

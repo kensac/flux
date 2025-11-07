@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -17,27 +18,41 @@ var (
 		LastUpdated: time.Now(),
 	}
 	configMutex sync.RWMutex
-	configPath  = "/tmp/flux_channel_config.json"
+	configKey   = "channel_hopping"
 )
 
-// loadChannelConfig loads the channel hopping configuration from file
+// loadChannelConfig loads the channel hopping configuration from MongoDB
 func loadChannelConfig() error {
 	configMutex.Lock()
 	defer configMutex.Unlock()
 
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// File doesn't exist, use defaults and create it
-			return saveChannelConfigUnsafe()
-		}
-		return err
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	collection := db.Collection("config")
+	filter := bson.M{"_id": configKey}
+
+	var result struct {
+		ID          string `bson:"_id"`
+		Enabled     bool   `bson:"enabled"`
+		TimeoutMs   int    `bson:"timeout_ms"`
+		LastUpdated time.Time `bson:"last_updated"`
 	}
 
-	return json.Unmarshal(data, &channelHoppingConfig)
+	err := collection.FindOne(ctx, filter).Decode(&result)
+	if err != nil {
+		// Config doesn't exist, use defaults and create it
+		return saveChannelConfigUnsafe()
+	}
+
+	channelHoppingConfig.Enabled = result.Enabled
+	channelHoppingConfig.TimeoutMs = result.TimeoutMs
+	channelHoppingConfig.LastUpdated = result.LastUpdated
+
+	return nil
 }
 
-// saveChannelConfig saves the channel hopping configuration to file
+// saveChannelConfig saves the channel hopping configuration to MongoDB
 func saveChannelConfig() error {
 	configMutex.Lock()
 	defer configMutex.Unlock()
@@ -46,12 +61,25 @@ func saveChannelConfig() error {
 
 // saveChannelConfigUnsafe saves without locking (caller must hold lock)
 func saveChannelConfigUnsafe() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	channelHoppingConfig.LastUpdated = time.Now()
-	data, err := json.MarshalIndent(channelHoppingConfig, "", "  ")
-	if err != nil {
-		return err
+
+	collection := db.Collection("config")
+	filter := bson.M{"_id": configKey}
+	update := bson.M{
+		"$set": bson.M{
+			"_id":          configKey,
+			"enabled":      channelHoppingConfig.Enabled,
+			"timeout_ms":   channelHoppingConfig.TimeoutMs,
+			"last_updated": channelHoppingConfig.LastUpdated,
+		},
 	}
-	return os.WriteFile(configPath, data, 0644)
+
+	opts := options.Update().SetUpsert(true)
+	_, err := collection.UpdateOne(ctx, filter, update, opts)
+	return err
 }
 
 // getChannelConfig returns the current channel hopping configuration

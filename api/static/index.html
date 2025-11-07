@@ -9,6 +9,10 @@
     <h1>Flux WiFi Sniffer</h1>
 
     <button onclick="loadAll()">Refresh</button>
+    <label>
+        <input type="checkbox" id="autoRefresh" checked onchange="toggleAutoRefresh()">
+        Auto-refresh (5s)
+    </label>
 
     <h2>Stats</h2>
     <p>Total Devices: <span id="totalDevices">-</span></p>
@@ -149,6 +153,8 @@
         let apSortAsc = false;
         let allowlist = [];
         let allowlistEnabled = false;
+        let autoRefreshInterval = null;
+        let autoRefreshHistoryInterval = null;
 
         function formatTime(ts) {
             if (!ts) return '-';
@@ -550,11 +556,34 @@
             document.getElementById('historyChart').innerHTML = chart;
         }
 
+        function toggleAutoRefresh() {
+            const enabled = document.getElementById('autoRefresh').checked;
+
+            if (enabled) {
+                // Start auto-refresh
+                autoRefreshInterval = setInterval(loadAll, 5000);
+                autoRefreshHistoryInterval = setInterval(loadHistoricalData, 60000);
+            } else {
+                // Stop auto-refresh
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                if (autoRefreshHistoryInterval) {
+                    clearInterval(autoRefreshHistoryInterval);
+                    autoRefreshHistoryInterval = null;
+                }
+            }
+        }
+
         loadAllowlist();
         loadAll();
         loadHistoricalData();
-        setInterval(loadAll, 5000);
-        setInterval(loadHistoricalData, 60000); // Refresh history every minute
+
+        // Start auto-refresh if checkbox is checked
+        if (document.getElementById('autoRefresh').checked) {
+            toggleAutoRefresh();
+        }
     </script>
 </body>
 </html>
