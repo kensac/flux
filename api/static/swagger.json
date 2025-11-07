@@ -1,0 +1,728 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Flux WiFi Sniffer API",
+    "description": "WiFi presence detection and occupancy analytics for enterprise buildings. Monitor occupancy, optimize HVAC/lighting, and reduce operational costs.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Flux Team"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/stats": {
+      "get": {
+        "tags": ["Statistics"],
+        "summary": "Get aggregate statistics",
+        "description": "Returns total and active counts for devices and access points",
+        "operationId": "getStats",
+        "responses": {
+          "200": {
+            "description": "Statistics",
+            "schema": {
+              "$ref": "#/definitions/Stats"
+            }
+          }
+        }
+      }
+    },
+    "/devices": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "List all devices",
+        "description": "Returns a list of all detected WiFi devices, sorted by last seen",
+        "operationId": "listDevices",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of devices to return",
+            "type": "integer",
+            "default": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of devices",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Device"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/active": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get active devices",
+        "description": "Returns devices seen recently within specified time window",
+        "operationId": "getActiveDevices",
+        "parameters": [
+          {
+            "name": "minutes",
+            "in": "query",
+            "description": "Time window in minutes",
+            "type": "integer",
+            "default": 5
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of active devices",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Device"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingest/device": {
+      "post": {
+        "tags": ["Data Ingestion"],
+        "summary": "Ingest device data",
+        "description": "Records a detected WiFi device probe or packet",
+        "operationId": "ingestDevice",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["mac_address"],
+              "properties": {
+                "mac_address": {
+                  "type": "string",
+                  "example": "aa:bb:cc:dd:ee:ff",
+                  "description": "MAC address of the device"
+                },
+                "rssi": {
+                  "type": "integer",
+                  "example": -65,
+                  "description": "Signal strength in dBm"
+                },
+                "probe_ssid": {
+                  "type": "string",
+                  "example": "MyWiFi",
+                  "description": "SSID being probed"
+                },
+                "vendor": {
+                  "type": "string",
+                  "example": "Apple Inc",
+                  "description": "Device vendor from OUI"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/OkResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/ingest/connection": {
+      "post": {
+        "tags": ["Data Ingestion"],
+        "summary": "Record device connection",
+        "description": "Records when a device connects to an access point",
+        "operationId": "ingestConnection",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["mac_address"],
+              "properties": {
+                "mac_address": {
+                  "type": "string",
+                  "example": "aa:bb:cc:dd:ee:ff"
+                },
+                "bssid": {
+                  "type": "string",
+                  "example": "11:22:33:44:55:66",
+                  "description": "AP BSSID"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/OkResponse"
+            }
+          }
+        }
+      }
+    },
+    "/ingest/disconnection": {
+      "post": {
+        "tags": ["Data Ingestion"],
+        "summary": "Record device disconnection",
+        "description": "Records when a device disconnects from an access point",
+        "operationId": "ingestDisconnection",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["mac_address"],
+              "properties": {
+                "mac_address": {
+                  "type": "string",
+                  "example": "aa:bb:cc:dd:ee:ff"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/OkResponse"
+            }
+          }
+        }
+      }
+    },
+    "/ingest/data": {
+      "post": {
+        "tags": ["Data Ingestion"],
+        "summary": "Record data usage",
+        "description": "Records data frame statistics for a device",
+        "operationId": "ingestData",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["mac_address"],
+              "properties": {
+                "mac_address": {
+                  "type": "string"
+                },
+                "frame_count": {
+                  "type": "integer"
+                },
+                "byte_count": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/OkResponse"
+            }
+          }
+        }
+      }
+    },
+    "/access-points": {
+      "get": {
+        "tags": ["Access Points"],
+        "summary": "List access points",
+        "description": "Returns all detected WiFi access points",
+        "operationId": "listAccessPoints",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "default": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of access points",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AccessPoint"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingest/access-point": {
+      "post": {
+        "tags": ["Data Ingestion"],
+        "summary": "Ingest access point beacon",
+        "operationId": "ingestAccessPoint",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["bssid"],
+              "properties": {
+                "bssid": {
+                  "type": "string"
+                },
+                "ssid": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": "integer"
+                },
+                "rssi": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/OkResponse"
+            }
+          }
+        }
+      }
+    },
+    "/config/channel-hopping": {
+      "get": {
+        "tags": ["Configuration"],
+        "summary": "Get channel hopping config",
+        "description": "Returns current channel hopping settings",
+        "operationId": "getChannelConfig",
+        "responses": {
+          "200": {
+            "description": "Channel configuration",
+            "schema": {
+              "$ref": "#/definitions/ChannelHoppingConfig"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Configuration"],
+        "summary": "Update channel hopping config",
+        "description": "Updates channel hopping settings (stored in MongoDB)",
+        "operationId": "updateChannelConfig",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["enabled", "timeout_ms"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "timeout_ms": {
+                  "type": "integer",
+                  "minimum": 50,
+                  "maximum": 10000,
+                  "example": 300,
+                  "description": "Channel hop timeout in milliseconds"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "config": {
+                  "$ref": "#/definitions/ChannelHoppingConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/metrics/history": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get historical metrics",
+        "description": "Returns time-series snapshots of occupancy and system metrics for analytics",
+        "operationId": "getMetricsHistory",
+        "parameters": [
+          {
+            "name": "tier",
+            "in": "query",
+            "description": "Time granularity",
+            "type": "string",
+            "enum": ["1m", "5m", "1h"],
+            "default": "1h"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Start timestamp (ISO8601)",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "End timestamp (ISO8601)",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "default": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical metrics",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "snapshots": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/MetricsSnapshot"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/summary": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get metrics summary",
+        "description": "Returns aggregated statistics over a time period for ROI calculations",
+        "operationId": "getMetricsSummary",
+        "parameters": [
+          {
+            "name": "tier",
+            "in": "query",
+            "type": "string",
+            "enum": ["1m", "5m", "1h"],
+            "default": "1h"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary statistics",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data_points": {
+                  "type": "integer"
+                },
+                "devices": {
+                  "type": "object",
+                  "properties": {
+                    "avg_total": {
+                      "type": "number"
+                    },
+                    "avg_active": {
+                      "type": "number"
+                    },
+                    "avg_connected": {
+                      "type": "number"
+                    },
+                    "max_total": {
+                      "type": "integer"
+                    },
+                    "max_active": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "access_points": {
+                  "type": "object",
+                  "properties": {
+                    "avg_total": {
+                      "type": "number"
+                    },
+                    "avg_active": {
+                      "type": "number"
+                    },
+                    "max_total": {
+                      "type": "integer"
+                    },
+                    "max_active": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Stats": {
+      "type": "object",
+      "properties": {
+        "total_devices": {
+          "type": "integer",
+          "description": "Total unique devices ever seen"
+        },
+        "active_devices": {
+          "type": "integer",
+          "description": "Devices seen in last 5 minutes"
+        },
+        "total_aps": {
+          "type": "integer",
+          "description": "Total access points detected"
+        },
+        "active_aps": {
+          "type": "integer",
+          "description": "APs seen in last 5 minutes"
+        }
+      }
+    },
+    "Device": {
+      "type": "object",
+      "properties": {
+        "mac_address": {
+          "type": "string",
+          "example": "aa:bb:cc:dd:ee:ff"
+        },
+        "vendor": {
+          "type": "string",
+          "example": "Apple Inc"
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rssi_values": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Recent RSSI values"
+        },
+        "probe_ssids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "SSIDs the device has probed"
+        },
+        "packet_count": {
+          "type": "integer"
+        },
+        "connected": {
+          "type": "boolean",
+          "description": "Whether device is connected to an AP"
+        },
+        "data_frames": {
+          "type": "integer"
+        },
+        "data_bytes": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "AccessPoint": {
+      "type": "object",
+      "properties": {
+        "bssid": {
+          "type": "string"
+        },
+        "ssid": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "integer"
+        },
+        "encryption": {
+          "type": "string"
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rssi_values": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "beacon_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "ChannelHoppingConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 10000
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "MetricsSnapshot": {
+      "type": "object",
+      "description": "Time-series snapshot for occupancy analytics",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["1m", "5m", "1h"]
+        },
+        "devices": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer"
+            },
+            "active": {
+              "type": "integer"
+            },
+            "connected": {
+              "type": "integer"
+            }
+          }
+        },
+        "access_points": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer"
+            },
+            "active": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "OkResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "ok"
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Statistics",
+      "description": "Real-time system statistics"
+    },
+    {
+      "name": "Devices",
+      "description": "WiFi device detection and tracking"
+    },
+    {
+      "name": "Access Points",
+      "description": "Access point detection"
+    },
+    {
+      "name": "Data Ingestion",
+      "description": "Endpoints for sniffer to send captured data"
+    },
+    {
+      "name": "Configuration",
+      "description": "System configuration"
+    },
+    {
+      "name": "Analytics",
+      "description": "Historical data and occupancy analytics for HVAC/lighting optimization"
+    }
+  ]
+}

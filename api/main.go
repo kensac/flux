@@ -1,3 +1,33 @@
+// Package main Flux WiFi Sniffer API
+//
+// WiFi presence detection and occupancy analytics API
+//
+// Terms Of Service:
+//
+// There are no TOS at this moment, use at your own risk
+//
+//     Schemes: http, https
+//     Host: localhost:8080
+//     BasePath: /
+//     Version: 1.0.0
+//     Contact: Flux Team
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//
+//     Security:
+//     - api_key:
+//
+//     SecurityDefinitions:
+//     api_key:
+//          type: apiKey
+//          name: Authorization
+//          in: header
+//
+// swagger:meta
 package main
 
 import (
