@@ -4,14 +4,11 @@
 #include <time.h>
 
 #define IEEE80211_FTYPE_MGMT 0x00
-#define IEEE80211_STYPE_BEACON 0x80
-#define IEEE80211_STYPE_PROBE_REQ 0x40
+#define IEEE80211_STYPE_BEACON 0x08
+#define IEEE80211_STYPE_PROBE_REQ 0x04
 
 typedef struct {
-    uint8_t version:2;
-    uint8_t type:2;
-    uint8_t subtype:4;
-    uint8_t flags;
+    uint8_t fc[2];
     uint16_t duration;
     uint8_t addr1[6];
     uint8_t addr2[6];
@@ -130,14 +127,17 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
     const ieee80211_hdr_t *wifi = (const ieee80211_hdr_t *)(packet + rtap_len);
 
-    if (wifi->type != IEEE80211_FTYPE_MGMT) return;
+    uint8_t type = (wifi->fc[0] >> 2) & 0x03;
+    uint8_t subtype = (wifi->fc[0] >> 4) & 0x0F;
+
+    if (type != IEEE80211_FTYPE_MGMT) return;
 
     const uint8_t *body = packet + rtap_len + sizeof(ieee80211_hdr_t);
     uint32_t body_len = header->len - rtap_len - sizeof(ieee80211_hdr_t);
 
-    if (wifi->subtype == IEEE80211_STYPE_BEACON) {
+    if (subtype == IEEE80211_STYPE_BEACON) {
         handle_beacon(sniffer, wifi, body, body_len);
-    } else if (wifi->subtype == IEEE80211_STYPE_PROBE_REQ) {
+    } else if (subtype == IEEE80211_STYPE_PROBE_REQ) {
         handle_probe_req(sniffer, wifi);
     }
 }
