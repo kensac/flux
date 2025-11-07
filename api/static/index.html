@@ -19,6 +19,20 @@
     <hr>
 
     <h2>Active Devices</h2>
+    <p>
+        <label><input type="checkbox" id="allowlistMode" onchange="toggleAllowlistMode()"> Allowlist Mode (show only approved devices)</label>
+    </p>
+    <div id="allowlistEditor" style="display:none;">
+        <p><strong>Approved MAC Addresses (one per line):</strong></p>
+        <textarea id="allowlistInput" rows="10" cols="50" placeholder="00:11:22:33:44:55&#10;aa:bb:cc:dd:ee:ff"></textarea>
+        <br>
+        <button onclick="saveAllowlist()">Save Allowlist</button>
+        <button onclick="toggleEditor()">Hide Editor</button>
+    </div>
+    <p>
+        <button onclick="toggleEditor()">Edit Allowlist</button>
+        <span id="allowlistStatus"></span>
+    </p>
     <input type="text" id="deviceSearch" placeholder="Search devices..." onkeyup="filterDevices()">
     <table border="1" id="devicesTable">
         <thead>
@@ -63,6 +77,8 @@
         let deviceSortAsc = false;
         let apSortKey = 'last_seen';
         let apSortAsc = false;
+        let allowlist = [];
+        let allowlistEnabled = false;
 
         function formatTime(ts) {
             if (!ts) return '-';
@@ -124,11 +140,19 @@
 
         function renderDevices() {
             const search = document.getElementById('deviceSearch').value.toLowerCase();
-            let filtered = devicesData.filter(d =>
-                d.mac_address.toLowerCase().includes(search) ||
-                (d.vendor && d.vendor.toLowerCase().includes(search)) ||
-                (d.probe_ssids && d.probe_ssids.some(s => s.toLowerCase().includes(search)))
-            );
+            let filtered = devicesData.filter(d => {
+                const matchesSearch = d.mac_address.toLowerCase().includes(search) ||
+                    (d.vendor && d.vendor.toLowerCase().includes(search)) ||
+                    (d.probe_ssids && d.probe_ssids.some(s => s.toLowerCase().includes(search)));
+
+                if (!matchesSearch) return false;
+
+                if (allowlistEnabled) {
+                    return allowlist.some(mac => mac.toLowerCase() === d.mac_address.toLowerCase());
+                }
+
+                return true;
+            });
 
             filtered.sort((a, b) => {
                 let aVal, bVal;
@@ -198,11 +222,53 @@
             renderAPs();
         }
 
+        function toggleAllowlistMode() {
+            allowlistEnabled = document.getElementById('allowlistMode').checked;
+            updateAllowlistStatus();
+            renderDevices();
+        }
+
+        function toggleEditor() {
+            const editor = document.getElementById('allowlistEditor');
+            editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveAllowlist() {
+            const input = document.getElementById('allowlistInput').value;
+            allowlist = input.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            localStorage.setItem('flux_allowlist', JSON.stringify(allowlist));
+            updateAllowlistStatus();
+            renderDevices();
+            alert('Allowlist saved with ' + allowlist.length + ' MAC addresses');
+        }
+
+        function loadAllowlist() {
+            const stored = localStorage.getItem('flux_allowlist');
+            if (stored) {
+                allowlist = JSON.parse(stored);
+                document.getElementById('allowlistInput').value = allowlist.join('\n');
+            }
+            updateAllowlistStatus();
+        }
+
+        function updateAllowlistStatus() {
+            const status = document.getElementById('allowlistStatus');
+            if (allowlist.length > 0) {
+                status.textContent = '(' + allowlist.length + ' approved MACs)';
+            } else {
+                status.textContent = '(no MACs configured)';
+            }
+        }
+
         async function loadAll() {
             await Promise.all([loadStats(), loadDevices(), loadAPs()]);
             document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
         }
 
+        loadAllowlist();
         loadAll();
         setInterval(loadAll, 5000);
     </script>
