@@ -115,7 +115,7 @@
     </div>
 
     <h3>Device & AP Trends</h3>
-    <div id="historyChart" style="font-family: monospace; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; overflow-x: auto;">
+    <div id="historyChart">
         <p>Loading chart...</p>
     </div>
 
@@ -390,10 +390,8 @@
             const status = document.getElementById('channelHoppingStatus');
             if (config.enabled) {
                 status.textContent = 'Enabled, hopping every ' + config.timeout_ms + 'ms';
-                status.style.color = '#0a0';
             } else {
                 status.textContent = 'Disabled';
-                status.style.color = '#a00';
             }
         }
 
@@ -418,7 +416,7 @@
                 const summaryData = await summaryRes.json();
                 renderHistorySummary(summaryData);
             } catch (e) {
-                document.getElementById('historySummary').innerHTML = '<p style="color: red;">Error loading summary: ' + e.message + '</p>';
+                document.getElementById('historySummary').innerHTML = '<p>Error loading summary: ' + e.message + '</p>';
             }
 
             // Load history snapshots
@@ -429,7 +427,7 @@
                 renderHistoryChart(historyData.snapshots || [], tier);
             } catch (e) {
                 document.getElementById('historyTable').querySelector('tbody').innerHTML =
-                    '<tr><td colspan="6" style="color: red;">Error loading history: ' + e.message + '</td></tr>';
+                    '<tr><td colspan="6">Error loading history: ' + e.message + '</td></tr>';
             }
         }
 
