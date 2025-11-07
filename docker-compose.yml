@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - flux-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    networks:
+      - flux-network
+
+  sniffer:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    environment:
+      - INTERFACE=wlan0
+      - MONGODB_URI=mongodb://localhost:27017/
+      - RABBITMQ_HOST=localhost
+    depends_on:
+      - mongodb
+      - rabbitmq
+    volumes:
+      - ./:/app
+
+volumes:
+  mongodb_data:
+
+networks:
+  flux-network:
+    driver: bridge
