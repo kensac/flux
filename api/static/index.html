@@ -69,6 +69,56 @@
     </table>
 
     <hr>
+
+    <h2>Historical Data</h2>
+    <div>
+        <label>Time Range:
+            <select id="historyRange" onchange="loadHistoricalData()">
+                <option value="1">Last Hour</option>
+                <option value="6">Last 6 Hours</option>
+                <option value="24" selected>Last 24 Hours</option>
+                <option value="72">Last 3 Days</option>
+                <option value="168">Last 7 Days</option>
+            </select>
+        </label>
+        <label style="margin-left: 20px;">Granularity:
+            <select id="historyTier" onchange="loadHistoricalData()">
+                <option value="1m">1 minute</option>
+                <option value="5m">5 minutes</option>
+                <option value="1h" selected>1 hour</option>
+            </select>
+        </label>
+        <button onclick="loadHistoricalData()" style="margin-left: 20px;">Refresh History</button>
+    </div>
+
+    <h3>Summary Statistics</h3>
+    <div id="historySummary">
+        <p>Loading...</p>
+    </div>
+
+    <h3>Device & AP Trends</h3>
+    <div id="historyChart" style="font-family: monospace; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; overflow-x: auto;">
+        <p>Loading chart...</p>
+    </div>
+
+    <h3>Recent Snapshots</h3>
+    <table border="1" id="historyTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Total Devices</th>
+                <th>Active Devices</th>
+                <th>Connected</th>
+                <th>Total APs</th>
+                <th>Active APs</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="6">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <hr>
     <p>Last updated: <span id="lastUpdate">-</span></p>
 
     <script>
@@ -280,9 +330,161 @@
             document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
         }
 
+        async function loadHistoricalData() {
+            const hours = parseInt(document.getElementById('historyRange').value);
+            const tier = document.getElementById('historyTier').value;
+
+            const end = new Date();
+            const start = new Date(end.getTime() - (hours * 60 * 60 * 1000));
+
+            const startStr = start.toISOString();
+            const endStr = end.toISOString();
+
+            // Load summary
+            try {
+                const summaryRes = await fetch(`${API_BASE}/metrics/summary?tier=${tier}&start=${startStr}&end=${endStr}`);
+                const summaryData = await summaryRes.json();
+                renderHistorySummary(summaryData);
+            } catch (e) {
+                document.getElementById('historySummary').innerHTML = '<p style="color: red;">Error loading summary: ' + e.message + '</p>';
+            }
+
+            // Load history snapshots
+            try {
+                const historyRes = await fetch(`${API_BASE}/metrics/history?tier=${tier}&start=${startStr}&end=${endStr}&limit=100`);
+                const historyData = await historyRes.json();
+                renderHistoryTable(historyData.snapshots || []);
+                renderHistoryChart(historyData.snapshots || [], tier);
+            } catch (e) {
+                document.getElementById('historyTable').querySelector('tbody').innerHTML =
+                    '<tr><td colspan="6" style="color: red;">Error loading history: ' + e.message + '</td></tr>';
+            }
+        }
+
+        function renderHistorySummary(data) {
+            if (data.error) {
+                document.getElementById('historySummary').innerHTML = '<p>' + data.error + '</p>';
+                return;
+            }
+
+            const html = `
+                <table border="1">
+                    <tr>
+                        <th colspan="2">Devices</th>
+                        <th colspan="2">Access Points</th>
+                    </tr>
+                    <tr>
+                        <td><b>Avg Total:</b> ${data.devices.avg_total.toFixed(1)}</td>
+                        <td><b>Avg Active:</b> ${data.devices.avg_active.toFixed(1)}</td>
+                        <td><b>Avg Total:</b> ${data.access_points.avg_total.toFixed(1)}</td>
+                        <td><b>Avg Active:</b> ${data.access_points.avg_active.toFixed(1)}</td>
+                    </tr>
+                    <tr>
+                        <td><b>Max Total:</b> ${data.devices.max_total}</td>
+                        <td><b>Max Active:</b> ${data.devices.max_active}</td>
+                        <td><b>Max Total:</b> ${data.access_points.max_total}</td>
+                        <td><b>Max Active:</b> ${data.access_points.max_active}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><b>Avg Connected:</b> ${data.devices.avg_connected.toFixed(1)}</td>
+                        <td colspan="2"><b>Data Points:</b> ${data.data_points}</td>
+                    </tr>
+                </table>
+            `;
+            document.getElementById('historySummary').innerHTML = html;
+        }
+
+        function renderHistoryTable(snapshots) {
+            if (!snapshots || snapshots.length === 0) {
+                document.getElementById('historyTable').querySelector('tbody').innerHTML =
+                    '<tr><td colspan="6">No historical data available</td></tr>';
+                return;
+            }
+
+            // Show most recent 20 snapshots
+            const recent = snapshots.slice(0, 20);
+
+            const tbody = document.getElementById('historyTable').querySelector('tbody');
+            tbody.innerHTML = recent.map(snap => `
+                <tr>
+                    <td>${formatTime(snap.timestamp)}</td>
+                    <td>${snap.devices.total}</td>
+                    <td>${snap.devices.active}</td>
+                    <td>${snap.devices.connected}</td>
+                    <td>${snap.access_points.total}</td>
+                    <td>${snap.access_points.active}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderHistoryChart(snapshots, tier) {
+            if (!snapshots || snapshots.length === 0) {
+                document.getElementById('historyChart').innerHTML = '<p>No data available for chart</p>';
+                return;
+            }
+
+            // Reverse to show oldest first (left to right)
+            const data = snapshots.slice().reverse();
+
+            // Find max values for scaling
+            const maxDevices = Math.max(...data.map(s => s.devices.active), 1);
+            const maxAPs = Math.max(...data.map(s => s.access_points.active), 1);
+            const maxValue = Math.max(maxDevices, maxAPs, 1);
+
+            const chartHeight = 20;
+            const barChar = '█';
+            const emptyChar = '·';
+
+            let chart = '<pre style="line-height: 1.2;">\n';
+            chart += `Active Devices & APs Over Time (${tier} intervals)\n`;
+            chart += `Legend: Devices=${barChar} APs=${emptyChar}\n\n`;
+
+            // Create chart rows (top to bottom)
+            for (let row = chartHeight; row >= 0; row--) {
+                const threshold = (row / chartHeight) * maxValue;
+                const label = row === chartHeight ? maxValue.toFixed(0) :
+                             row === 0 ? '0' : '';
+                chart += label.padStart(4) + ' │';
+
+                for (let i = 0; i < Math.min(data.length, 50); i++) {
+                    const devActive = data[i].devices.active;
+                    const apActive = data[i].access_points.active;
+
+                    if (devActive >= threshold) {
+                        chart += barChar;
+                    } else if (apActive >= threshold) {
+                        chart += emptyChar;
+                    } else {
+                        chart += ' ';
+                    }
+                }
+                chart += '\n';
+            }
+
+            // X-axis
+            chart += '     └' + '─'.repeat(Math.min(data.length, 50)) + '\n';
+
+            // Time labels (show first and last)
+            if (data.length > 0) {
+                const firstTime = new Date(data[0].timestamp).toLocaleTimeString();
+                const lastTime = new Date(data[data.length - 1].timestamp).toLocaleTimeString();
+                chart += `      ${firstTime}`;
+                chart += ' '.repeat(Math.max(0, Math.min(data.length, 50) - firstTime.length - lastTime.length));
+                chart += `${lastTime}\n`;
+            }
+
+            chart += '\n';
+            chart += `Total snapshots: ${snapshots.length} | Showing: ${Math.min(data.length, 50)}\n`;
+            chart += '</pre>';
+
+            document.getElementById('historyChart').innerHTML = chart;
+        }
+
         loadAllowlist();
         loadAll();
+        loadHistoricalData();
         setInterval(loadAll, 5000);
+        setInterval(loadHistoricalData, 60000); // Refresh history every minute
     </script>
 </body>
 </html>
