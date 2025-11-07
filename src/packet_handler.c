@@ -174,21 +174,6 @@ static void handle_deauth(sniffer_t *sniffer, const ieee80211_hdr_t *hdr) {
     http_post_disconnection(sniffer->api_url, hdr->addr2);
 }
 
-typedef struct {
-    uint8_t mac[6];
-    int frame_count;
-    int64_t byte_count;
-} device_data_t;
-
-static device_data_t device_data_cache[100];
-static int cache_size = 0;
-
-static void flush_device_data(sniffer_t *sniffer, const uint8_t *mac, int frames, int64_t bytes) {
-    if (frames > 0) {
-        http_post_data(sniffer->api_url, mac, frames, bytes);
-    }
-}
-
 static void handle_data_frame(sniffer_t *sniffer, const ieee80211_hdr_t *hdr, uint32_t frame_len) {
     static int data_count = 0;
     static uint64_t total_bytes = 0;
@@ -200,43 +185,7 @@ static void handle_data_frame(sniffer_t *sniffer, const ieee80211_hdr_t *hdr, ui
         printf("Data frames: %d (%.2f MB)\n", data_count, total_bytes / 1024.0 / 1024.0);
     }
 
-    const uint8_t *source_mac = hdr->addr2;
-
-    int found = -1;
-    for (int i = 0; i < cache_size; i++) {
-        if (memcmp(device_data_cache[i].mac, source_mac, 6) == 0) {
-            found = i;
-            break;
-        }
-    }
-
-    if (found == -1) {
-        if (cache_size < 100) {
-            found = cache_size++;
-            memcpy(device_data_cache[found].mac, source_mac, 6);
-            device_data_cache[found].frame_count = 0;
-            device_data_cache[found].byte_count = 0;
-        } else {
-            flush_device_data(sniffer, device_data_cache[0].mac,
-                            device_data_cache[0].frame_count,
-                            device_data_cache[0].byte_count);
-            found = 0;
-            memcpy(device_data_cache[found].mac, source_mac, 6);
-            device_data_cache[found].frame_count = 0;
-            device_data_cache[found].byte_count = 0;
-        }
-    }
-
-    device_data_cache[found].frame_count++;
-    device_data_cache[found].byte_count += frame_len;
-
-    if (device_data_cache[found].frame_count >= 100) {
-        flush_device_data(sniffer, device_data_cache[found].mac,
-                         device_data_cache[found].frame_count,
-                         device_data_cache[found].byte_count);
-        device_data_cache[found].frame_count = 0;
-        device_data_cache[found].byte_count = 0;
-    }
+    http_post_data(sniffer->api_url, hdr->addr2, 1, frame_len);
 }
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
