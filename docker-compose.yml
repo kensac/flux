@@ -3,22 +3,34 @@ version: '3.8'
 services:
   mongodb:
     image: mongo:7
-    restart: unless-stopped
+    restart: "no"
     volumes:
       - mongodb_data:/data/db
     ports:
       - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   rabbitmq:
     image: rabbitmq:3-management
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   sniffer:
     build: .
-    restart: unless-stopped
+    restart: "no"
     network_mode: host
     privileged: true
     environment:
@@ -26,8 +38,10 @@ services:
       - MONGODB_URI=mongodb://127.0.0.1:27017/
       - RABBITMQ_HOST=127.0.0.1
     depends_on:
-      - mongodb
-      - rabbitmq
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./:/app
 

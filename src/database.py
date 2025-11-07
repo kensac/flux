@@ -19,7 +19,7 @@ class Database:
 
     def connect(self) -> bool:
         try:
-            self.client = MongoClient(self.uri, serverSelectionTimeoutMS=5000)
+            self.client = MongoClient(self.uri, serverSelectionTimeoutMS=30000)
             self.client.admin.command('ping')
 
             db = self.client[self.db_name]
@@ -35,20 +35,20 @@ class Database:
             return False
 
     def _create_indexes(self) -> None:
-        if self.devices:
+        if self.devices is not None:
             self.devices.create_index([("mac_address", ASCENDING)], unique=True)
             self.devices.create_index([("last_seen", DESCENDING)])
 
-        if self.access_points:
+        if self.access_points is not None:
             self.access_points.create_index([("bssid", ASCENDING)], unique=True)
             self.access_points.create_index([("last_seen", DESCENDING)])
 
-        if self.events:
+        if self.events is not None:
             self.events.create_index([("timestamp", DESCENDING)])
             self.events.create_index([("mac_address", ASCENDING)])
 
     def upsert_device(self, device: Device) -> None:
-        if not self.devices:
+        if self.devices is None:
             return
 
         try:
@@ -76,7 +76,7 @@ class Database:
             logger.error(f"Failed to upsert device {device.mac_address}: {e}")
 
     def upsert_access_point(self, ap: AccessPoint) -> None:
-        if not self.access_points:
+        if self.access_points is None:
             return
 
         try:
@@ -103,7 +103,7 @@ class Database:
             logger.error(f"Failed to upsert AP {ap.bssid}: {e}")
 
     def log_event(self, event_type: str, mac_address: str, metadata: dict = None) -> None:
-        if not self.events:
+        if self.events is None:
             return
 
         try:
@@ -118,7 +118,7 @@ class Database:
             logger.error(f"Failed to log event: {e}")
 
     def get_active_devices(self, since_minutes: int = 5) -> list:
-        if not self.devices:
+        if self.devices is None:
             return []
 
         try:

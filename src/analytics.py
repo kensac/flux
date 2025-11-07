@@ -9,7 +9,7 @@ class Analytics:
         self.db = db
 
     def get_unique_devices(self, hours: int = 24) -> int:
-        if not self.db.devices:
+        if self.db.devices is None:
             return 0
 
         cutoff = datetime.now() - timedelta(hours=hours)
@@ -19,7 +19,7 @@ class Analytics:
         return count
 
     def get_peak_hours(self, days: int = 7) -> dict:
-        if not self.db.devices:
+        if self.db.devices is None:
             return {}
 
         cutoff = datetime.now() - timedelta(days=days)
@@ -39,7 +39,7 @@ class Analytics:
         return {str(r["_id"]): r["count"] for r in results}
 
     def get_device_dwell_time(self, mac_address: str) -> Optional[dict]:
-        if not self.db.devices:
+        if self.db.devices is None:
             return None
 
         device = self.db.devices.find_one({"mac_address": mac_address})
@@ -61,7 +61,7 @@ class Analytics:
         return None
 
     def export_devices_json(self, filepath: str, hours: Optional[int] = None) -> None:
-        if not self.db.devices:
+        if self.db.devices is None:
             return
 
         query = {}
@@ -83,7 +83,7 @@ class Analytics:
             json.dump(devices, f, indent=2)
 
     def export_devices_csv(self, filepath: str, hours: Optional[int] = None) -> None:
-        if not self.db.devices:
+        if self.db.devices is None:
             return
 
         query = {}
@@ -113,7 +113,7 @@ class Analytics:
                 writer.writerow(row)
 
     def get_hourly_stats(self, hours: int = 24) -> list[dict]:
-        if not self.db.events:
+        if self.db.events is None:
             return []
 
         cutoff = datetime.now() - timedelta(hours=hours)

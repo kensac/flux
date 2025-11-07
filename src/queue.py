@@ -19,7 +19,9 @@ class MessageQueue:
             parameters = pika.ConnectionParameters(
                 host=self.host,
                 heartbeat=600,
-                blocked_connection_timeout=300
+                blocked_connection_timeout=300,
+                connection_attempts=3,
+                retry_delay=5
             )
             self.connection = pika.BlockingConnection(parameters)
             self.channel = self.connection.channel()
