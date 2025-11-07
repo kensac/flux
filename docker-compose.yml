@@ -31,8 +31,6 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    volumes:
-      - ./:/app
     deploy:
       resources:
         limits:
