@@ -60,7 +60,6 @@ func main() {
 
 	db = client.Database("flux")
 
-	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
 	r.Static("/static", "./static")
@@ -258,6 +257,7 @@ func ingestDevice(c *gin.Context) {
 	opts := options.Update().SetUpsert(true)
 	_, err := db.Collection("devices").UpdateOne(ctx, filter, update, opts)
 	if err != nil {
+		log.Printf("Device upsert error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -306,6 +306,7 @@ func ingestAccessPoint(c *gin.Context) {
 	opts := options.Update().SetUpsert(true)
 	_, err := db.Collection("access_points").UpdateOne(ctx, filter, update, opts)
 	if err != nil {
+		log.Printf("AP upsert error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
