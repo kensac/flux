@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY Makefile .
 COPY src/ ./src/
+COPY Makefile .
 
-RUN make
+RUN make clean || true && make -B && ls -la && test -f flux
 
-CMD ["./flux"]
+CMD ["./flux", "wlan0"]
