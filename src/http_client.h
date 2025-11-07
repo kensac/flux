@@ -5,5 +5,8 @@
 
 void http_post_device(const char *api_url, const uint8_t *mac, int rssi, const char *probe_ssid);
 void http_post_ap(const char *api_url, const uint8_t *bssid, const char *ssid, int channel, int rssi);
+void http_post_connection(const char *api_url, const uint8_t *mac, const uint8_t *bssid);
+void http_post_disconnection(const char *api_url, const uint8_t *mac);
+void http_post_data(const char *api_url, const uint8_t *mac, int frame_count, int64_t byte_count);
 
 #endif

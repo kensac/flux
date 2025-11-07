@@ -413,6 +413,9 @@ func ingestData(c *gin.Context) {
 
 	filter := bson.M{"mac_address": req.MACAddress}
 	update := bson.M{
+		"$set": bson.M{
+			"last_seen": time.Now(),
+		},
 		"$inc": bson.M{
 			"data_frames": req.FrameCount,
 			"data_bytes":  req.ByteCount,
