@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -O2 -pthread
 LDFLAGS = -lpcap -lmongoc-1.0 -lbson-1.0
 INCLUDES = -I/usr/include/libmongoc-1.0 -I/usr/include/libbson-1.0
 
-TARGET = flux
+TARGET = flux-sniffer
 SRCS = src/main.c src/sniffer.c src/packet_handler.c src/database.c
 OBJS = $(SRCS:.c=.o)
 

@@ -14,6 +14,6 @@ WORKDIR /app
 COPY src/ ./src/
 COPY Makefile .
 
-RUN make clean || true && make -B && ls -la && test -f flux
+RUN make clean || true && make -B && ls -la && test -f flux-sniffer
 
-CMD ["./flux", "wlan0"]
+CMD ["./flux-sniffer", "wlan0"]
