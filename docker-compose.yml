@@ -29,15 +29,14 @@ services:
     privileged: true
     environment:
       - INTERFACE=wlx24ec998bf0ce
-      - MONGODB_URI=mongodb://127.0.0.1:27017/
     depends_on:
-      mongodb:
-        condition: service_healthy
+      api:
+        condition: service_started
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 256M
 
   api:
     build: ./api

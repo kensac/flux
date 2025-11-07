@@ -74,6 +74,9 @@ func main() {
 	r.GET("/access-points/active", getActiveAccessPoints)
 	r.GET("/stats", getStats)
 
+	r.POST("/ingest/device", ingestDevice)
+	r.POST("/ingest/access-point", ingestAccessPoint)
+
 	port := getEnv("PORT", "8080")
 	log.Printf("Starting API on :%s", port)
 	r.Run(":" + port)
@@ -215,4 +218,97 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func ingestDevice(c *gin.Context) {
+	var req struct {
+		MACAddress string `json:"mac_address" binding:"required"`
+		RSSI       int    `json:"rssi"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"mac_address": req.MACAddress}
+	update := bson.M{
+		"$set": bson.M{
+			"last_seen": time.Now(),
+		},
+		"$setOnInsert": bson.M{
+			"first_seen":   time.Now(),
+			"probe_ssids":  []string{},
+			"packet_count": 0,
+		},
+		"$push": bson.M{
+			"rssi_values": bson.M{
+				"$each":  []int{req.RSSI},
+				"$slice": -100,
+			},
+		},
+		"$inc": bson.M{
+			"packet_count": 1,
+		},
+	}
+
+	opts := options.Update().SetUpsert(true)
+	_, err := db.Collection("devices").UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func ingestAccessPoint(c *gin.Context) {
+	var req struct {
+		BSSID   string `json:"bssid" binding:"required"`
+		SSID    string `json:"ssid"`
+		Channel int    `json:"channel"`
+		RSSI    int    `json:"rssi"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"bssid": req.BSSID}
+	update := bson.M{
+		"$set": bson.M{
+			"last_seen": time.Now(),
+			"ssid":      req.SSID,
+			"channel":   req.Channel,
+		},
+		"$setOnInsert": bson.M{
+			"first_seen":   time.Now(),
+			"beacon_count": 0,
+		},
+		"$push": bson.M{
+			"rssi_values": bson.M{
+				"$each":  []int{req.RSSI},
+				"$slice": -100,
+			},
+		},
+		"$inc": bson.M{
+			"beacon_count": 1,
+		},
+	}
+
+	opts := options.Update().SetUpsert(true)
+	_, err := db.Collection("access_points").UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

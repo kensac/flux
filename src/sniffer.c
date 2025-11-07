@@ -4,11 +4,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-int sniffer_init(sniffer_t *sniffer, const char *interface) {
+int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url) {
     char errbuf[PCAP_ERRBUF_SIZE];
 
     memset(sniffer, 0, sizeof(sniffer_t));
     strncpy(sniffer->interface, interface, sizeof(sniffer->interface) - 1);
+    strncpy(sniffer->api_url, api_url, sizeof(sniffer->api_url) - 1);
 
     sniffer->handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
     if (sniffer->handle == NULL) {
@@ -49,8 +50,4 @@ void sniffer_cleanup(sniffer_t *sniffer) {
         pcap_close(sniffer->handle);
         sniffer->handle = NULL;
     }
-
-    printf("Statistics:\n");
-    printf("  Devices: %u\n", sniffer->device_count);
-    printf("  Access Points: %u\n", sniffer->ap_count);
 }

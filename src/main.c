@@ -2,23 +2,21 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <curl/curl.h>
 #include "sniffer.h"
-#include "database.h"
 
 static sniffer_t sniffer;
-static db_t db;
 
 void signal_handler(int sig) {
     (void)sig;
     printf("\nShutting down...\n");
     sniffer_stop(&sniffer);
-    db_close(&db);
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
     const char *interface = "wlan0";
-    const char *mongo_uri = "mongodb://127.0.0.1:27017/";
+    const char *api_url = "http://127.0.0.1:8080";
 
     if (argc > 1) {
         interface = argv[1];
@@ -27,18 +25,15 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    mongoc_init();
+    curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    if (db_connect(&db, mongo_uri) != 0) {
-        fprintf(stderr, "Database connection failed, continuing without DB\n");
-    }
-
-    if (sniffer_init(&sniffer, interface) != 0) {
+    if (sniffer_init(&sniffer, interface, api_url) != 0) {
         fprintf(stderr, "Failed to initialize sniffer\n");
         return 1;
     }
 
     printf("Starting Flux WiFi Sniffer on %s\n", interface);
+    printf("Posting data to %s\n", api_url);
 
     if (sniffer_start(&sniffer) != 0) {
         fprintf(stderr, "Failed to start sniffer\n");
@@ -47,8 +42,7 @@ int main(int argc, char *argv[]) {
     }
 
     sniffer_cleanup(&sniffer);
-    db_close(&db);
-    mongoc_cleanup();
+    curl_global_cleanup();
 
     return 0;
 }

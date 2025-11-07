@@ -3,8 +3,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpcap-dev \
-    libmongoc-dev \
-    libbson-dev \
+    libcurl4-openssl-dev \
     wireless-tools \
     iw \
     && rm -rf /var/lib/apt/lists/*
