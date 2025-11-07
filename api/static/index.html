@@ -89,6 +89,7 @@
                 <tr>
                     <th>MAC Address</th>
                     <th>Vendor</th>
+                    <th>Probe SSIDs</th>
                     <th>Last Seen</th>
                     <th>Packets</th>
                     <th>Avg RSSI</th>
@@ -149,6 +150,7 @@
                 <tr>
                     <td>${d.mac_address}</td>
                     <td>${d.vendor || '-'}</td>
+                    <td>${d.probe_ssids && d.probe_ssids.length > 0 ? d.probe_ssids.join(', ') : '-'}</td>
                     <td>${formatTime(d.last_seen)}</td>
                     <td>${d.packet_count || 0}</td>
                     <td>${avgRSSI(d.rssi_values)}</td>

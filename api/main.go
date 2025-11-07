@@ -223,6 +223,8 @@ func ingestDevice(c *gin.Context) {
 	var req struct {
 		MACAddress string `json:"mac_address" binding:"required"`
 		RSSI       int    `json:"rssi"`
+		ProbeSSID  string `json:"probe_ssid"`
+		Vendor     string `json:"vendor"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -234,13 +236,16 @@ func ingestDevice(c *gin.Context) {
 	defer cancel()
 
 	filter := bson.M{"mac_address": req.MACAddress}
+
+	setFields := bson.M{"last_seen": time.Now()}
+	if req.Vendor != "" {
+		setFields["vendor"] = req.Vendor
+	}
+
 	update := bson.M{
-		"$set": bson.M{
-			"last_seen": time.Now(),
-		},
+		"$set": setFields,
 		"$setOnInsert": bson.M{
-			"first_seen":  time.Now(),
-			"probe_ssids": []string{},
+			"first_seen": time.Now(),
 		},
 		"$push": bson.M{
 			"rssi_values": bson.M{
@@ -251,6 +256,12 @@ func ingestDevice(c *gin.Context) {
 		"$inc": bson.M{
 			"packet_count": 1,
 		},
+	}
+
+	if req.ProbeSSID != "" {
+		update["$addToSet"] = bson.M{
+			"probe_ssids": req.ProbeSSID,
+		}
 	}
 
 	opts := options.Update().SetUpsert(true)

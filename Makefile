@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -O2 -pthread
 LDFLAGS = -lpcap -lcurl
 
 TARGET = flux-sniffer
-SRCS = src/main.c src/sniffer.c src/packet_handler.c src/http_client.c
+SRCS = src/main.c src/sniffer.c src/packet_handler.c src/http_client.c src/oui.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)

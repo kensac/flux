@@ -1,4 +1,5 @@
 #include "http_client.h"
+#include "oui.h"
 #include <curl/curl.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,7 +8,7 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb, void *us
     return size * nmemb;
 }
 
-void http_post_device(const char *api_url, const uint8_t *mac, int rssi) {
+void http_post_device(const char *api_url, const uint8_t *mac, int rssi, const char *probe_ssid) {
     CURL *curl = curl_easy_init();
     if (!curl) {
         fprintf(stderr, "Failed to init curl\n");
@@ -17,10 +18,18 @@ void http_post_device(const char *api_url, const uint8_t *mac, int rssi) {
     char url[256];
     snprintf(url, sizeof(url), "%s/ingest/device", api_url);
 
-    char json[256];
-    snprintf(json, sizeof(json),
-             "{\"mac_address\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d}",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], rssi);
+    const char *vendor = oui_lookup(mac);
+
+    char json[512];
+    if (probe_ssid && probe_ssid[0]) {
+        snprintf(json, sizeof(json),
+                 "{\"mac_address\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d,\"probe_ssid\":\"%s\",\"vendor\":\"%s\"}",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], rssi, probe_ssid, vendor);
+    } else {
+        snprintf(json, sizeof(json),
+                 "{\"mac_address\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"rssi\":%d,\"vendor\":\"%s\"}",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], rssi, vendor);
+    }
 
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
