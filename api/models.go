@@ -83,3 +83,10 @@ type MetricsSnapshot struct {
 	DeviceMetrics []DeviceMetric `bson:"device_metrics" json:"device_metrics"`
 	APMetrics     []APMetric     `bson:"ap_metrics" json:"ap_metrics"`
 }
+
+// ChannelHoppingConfig represents the channel hopping configuration
+type ChannelHoppingConfig struct {
+	Enabled     bool      `json:"enabled"`
+	TimeoutMs   int       `json:"timeout_ms"` // Timeout in milliseconds
+	LastUpdated time.Time `json:"last_updated"`
+}
