@@ -39,6 +39,18 @@
         </label>
         (50-10000ms)
     </p>
+    <p>
+        <label>
+            Channels (comma-separated):
+            <input type="text" id="channelHoppingChannels" size="40" placeholder="1, 6, 11" onchange="updateChannelHopping()">
+        </label>
+    </p>
+    <p>Common presets:
+        <button onclick="setChannels('1,6,11')">2.4GHz (1,6,11)</button>
+        <button onclick="setChannels('1,6,11,2,7,3,8,4,9,5,10')">2.4GHz All</button>
+        <button onclick="setChannels('36,40,44,48')">5GHz Low</button>
+        <button onclick="setChannels('149,153,157,161,165')">5GHz High</button>
+    </p>
     <p>Status: <span id="channelHoppingStatus">-</span></p>
 
     <hr>
@@ -352,12 +364,20 @@
             }
         }
 
+        function setChannels(channelStr) {
+            document.getElementById('channelHoppingChannels').value = channelStr;
+            updateChannelHopping();
+        }
+
         async function loadChannelConfig() {
             try {
                 const res = await fetch(API_BASE + '/config/channel-hopping');
                 const data = await res.json();
                 document.getElementById('channelHoppingEnabled').checked = data.enabled;
                 document.getElementById('channelHoppingTimeout').value = data.timeout_ms;
+                if (data.channels && data.channels.length > 0) {
+                    document.getElementById('channelHoppingChannels').value = data.channels.join(',');
+                }
                 updateChannelStatus(data);
             } catch (err) {
                 console.error('Failed to load channel config:', err);
@@ -368,20 +388,36 @@
         async function updateChannelHopping() {
             const enabled = document.getElementById('channelHoppingEnabled').checked;
             const timeoutMs = parseInt(document.getElementById('channelHoppingTimeout').value);
+            const channelsStr = document.getElementById('channelHoppingChannels').value.trim();
 
             if (timeoutMs < 50 || timeoutMs > 10000) {
                 alert('Timeout must be between 50 and 10000ms');
                 return;
             }
 
+            // Parse channels
+            let channels = [];
+            if (channelsStr) {
+                channels = channelsStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+                if (channels.length === 0) {
+                    alert('Please enter valid channel numbers separated by commas');
+                    return;
+                }
+            }
+
             try {
+                const body = {
+                    enabled: enabled,
+                    timeout_ms: timeoutMs
+                };
+                if (channels.length > 0) {
+                    body.channels = channels;
+                }
+
                 const res = await fetch(API_BASE + '/config/channel-hopping', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        enabled: enabled,
-                        timeout_ms: timeoutMs
-                    })
+                    body: JSON.stringify(body)
                 });
                 const data = await res.json();
                 if (data.status === 'ok') {
@@ -398,7 +434,11 @@
         function updateChannelStatus(config) {
             const status = document.getElementById('channelHoppingStatus');
             if (config.enabled) {
-                status.textContent = 'Enabled, hopping every ' + config.timeout_ms + 'ms';
+                let text = 'Enabled, hopping every ' + config.timeout_ms + 'ms';
+                if (config.channels && config.channels.length > 0) {
+                    text += ' on ' + config.channels.length + ' channels: [' + config.channels.join(', ') + ']';
+                }
+                status.textContent = text;
             } else {
                 status.textContent = 'Disabled';
             }

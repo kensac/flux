@@ -88,5 +88,6 @@ type MetricsSnapshot struct {
 type ChannelHoppingConfig struct {
 	Enabled     bool      `json:"enabled"`
 	TimeoutMs   int       `json:"timeout_ms"` // Timeout in milliseconds
+	Channels    []int     `json:"channels"`   // List of channels to hop (e.g. [1, 6, 11])
 	LastUpdated time.Time `json:"last_updated"`
 }

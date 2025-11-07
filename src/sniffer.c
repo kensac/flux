@@ -71,7 +71,7 @@ static void read_config(sniffer_t *sniffer) {
         return;
     }
 
-    // Simple JSON parsing - look for "enabled" and "timeout_ms" fields
+    // Simple JSON parsing - look for "enabled", "timeout_ms", and "channels" fields
     if (response.data) {
         char *enabled_ptr = strstr(response.data, "\"enabled\":");
         if (enabled_ptr) {
@@ -88,6 +88,37 @@ static void read_config(sniffer_t *sniffer) {
             if (sniffer->hopping_timeout_ms > 10000) sniffer->hopping_timeout_ms = 10000;
         }
 
+        // Parse channels array
+        char *channels_ptr = strstr(response.data, "\"channels\":");
+        if (channels_ptr) {
+            channels_ptr += 11; // Skip past "channels":
+            while (*channels_ptr == ' ') channels_ptr++;
+            if (*channels_ptr == '[') {
+                channels_ptr++; // Skip '['
+                sniffer->num_channels = 0;
+
+                while (*channels_ptr && *channels_ptr != ']' && sniffer->num_channels < 64) {
+                    while (*channels_ptr == ' ' || *channels_ptr == ',') channels_ptr++;
+                    if (*channels_ptr >= '0' && *channels_ptr <= '9') {
+                        int ch = atoi(channels_ptr);
+                        if (ch >= 1 && ch <= 165) {
+                            sniffer->channels[sniffer->num_channels++] = ch;
+                        }
+                        while (*channels_ptr >= '0' && *channels_ptr <= '9') channels_ptr++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If no channels parsed, use defaults
+        if (sniffer->num_channels == 0) {
+            int default_channels[] = {1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10};
+            sniffer->num_channels = 11;
+            memcpy(sniffer->channels, default_channels, sizeof(default_channels));
+        }
+
         free(response.data);
     }
 
@@ -96,8 +127,6 @@ static void read_config(sniffer_t *sniffer) {
 
 static void* channel_hopper(void *arg) {
     sniffer_t *sniffer = (sniffer_t *)arg;
-    int channels[] = {1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10};
-    int num_channels = sizeof(channels) / sizeof(channels[0]);
     int idx = 0;
     time_t last_config_check = 0;
 
@@ -107,14 +136,19 @@ static void* channel_hopper(void *arg) {
         // Check config every 5 seconds
         time_t now = time(NULL);
         if (now - last_config_check >= 5) {
+            int old_num_channels = sniffer->num_channels;
             read_config(sniffer);
+            // Reset index if channel list changed
+            if (sniffer->num_channels != old_num_channels || idx >= sniffer->num_channels) {
+                idx = 0;
+            }
             last_config_check = now;
         }
 
-        // Only hop if enabled
-        if (sniffer->hopping_enabled) {
-            set_channel(sniffer->interface, channels[idx]);
-            idx = (idx + 1) % num_channels;
+        // Only hop if enabled and we have channels
+        if (sniffer->hopping_enabled && sniffer->num_channels > 0) {
+            set_channel(sniffer->interface, sniffer->channels[idx]);
+            idx = (idx + 1) % sniffer->num_channels;
         }
 
         // Use configured timeout (convert ms to microseconds)
@@ -133,9 +167,13 @@ int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url)
 
     // Load initial channel hopping configuration
     read_config(sniffer);
-    printf("Channel hopping: %s, timeout: %dms\n",
+    printf("Channel hopping: %s, timeout: %dms, channels: [",
            sniffer->hopping_enabled ? "enabled" : "disabled",
            sniffer->hopping_timeout_ms);
+    for (int i = 0; i < sniffer->num_channels; i++) {
+        printf("%d%s", sniffer->channels[i], i < sniffer->num_channels - 1 ? ", " : "");
+    }
+    printf("]\n");
 
     sniffer->handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
     if (sniffer->handle == NULL) {

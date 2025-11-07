@@ -357,6 +357,16 @@
                   "maximum": 10000,
                   "example": 300,
                   "description": "Channel hop timeout in milliseconds"
+                },
+                "channels": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 165
+                  },
+                  "example": [1, 6, 11],
+                  "description": "List of WiFi channels to hop through"
                 }
               }
             }
@@ -635,6 +645,15 @@
           "type": "integer",
           "minimum": 50,
           "maximum": 10000
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 165
+          },
+          "description": "List of WiFi channels to hop through (e.g. [1,6,11] for 2.4GHz)"
         },
         "last_updated": {
           "type": "string",

@@ -15,6 +15,7 @@ var (
 	channelHoppingConfig = ChannelHoppingConfig{
 		Enabled:     true,
 		TimeoutMs:   300,
+		Channels:    []int{1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10}, // Default 2.4GHz channels
 		LastUpdated: time.Now(),
 	}
 	configMutex sync.RWMutex
@@ -33,9 +34,10 @@ func loadChannelConfig() error {
 	filter := bson.M{"_id": configKey}
 
 	var result struct {
-		ID          string `bson:"_id"`
-		Enabled     bool   `bson:"enabled"`
-		TimeoutMs   int    `bson:"timeout_ms"`
+		ID          string    `bson:"_id"`
+		Enabled     bool      `bson:"enabled"`
+		TimeoutMs   int       `bson:"timeout_ms"`
+		Channels    []int     `bson:"channels"`
 		LastUpdated time.Time `bson:"last_updated"`
 	}
 
@@ -47,6 +49,11 @@ func loadChannelConfig() error {
 
 	channelHoppingConfig.Enabled = result.Enabled
 	channelHoppingConfig.TimeoutMs = result.TimeoutMs
+	channelHoppingConfig.Channels = result.Channels
+	if len(channelHoppingConfig.Channels) == 0 {
+		// Fallback to default channels if empty
+		channelHoppingConfig.Channels = []int{1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10}
+	}
 	channelHoppingConfig.LastUpdated = result.LastUpdated
 
 	return nil
@@ -73,6 +80,7 @@ func saveChannelConfigUnsafe() error {
 			"_id":          configKey,
 			"enabled":      channelHoppingConfig.Enabled,
 			"timeout_ms":   channelHoppingConfig.TimeoutMs,
+			"channels":     channelHoppingConfig.Channels,
 			"last_updated": channelHoppingConfig.LastUpdated,
 		},
 	}
@@ -105,9 +113,22 @@ func updateChannelConfig(c *gin.Context) {
 		return
 	}
 
+	// Validate channels
+	if len(req.Channels) > 0 {
+		for _, ch := range req.Channels {
+			if ch < 1 || ch > 165 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "channels must be between 1 and 165"})
+				return
+			}
+		}
+	}
+
 	configMutex.Lock()
 	channelHoppingConfig.Enabled = req.Enabled
 	channelHoppingConfig.TimeoutMs = req.TimeoutMs
+	if len(req.Channels) > 0 {
+		channelHoppingConfig.Channels = req.Channels
+	}
 	configMutex.Unlock()
 
 	if err := saveChannelConfig(); err != nil {

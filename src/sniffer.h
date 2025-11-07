@@ -14,6 +14,8 @@ typedef struct {
     pthread_t hopper_thread;
     bool hopping_enabled;
     int hopping_timeout_ms;
+    int channels[64];      // Array of channels to hop
+    int num_channels;      // Number of channels in array
 } sniffer_t;
 
 int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url);
