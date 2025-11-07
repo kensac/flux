@@ -15,13 +15,18 @@ import (
 )
 
 type Device struct {
-	MACAddress   string    `bson:"mac_address" json:"mac_address"`
-	FirstSeen    time.Time `bson:"first_seen" json:"first_seen"`
-	LastSeen     time.Time `bson:"last_seen" json:"last_seen"`
-	RSSIValues   []int     `bson:"rssi_values" json:"rssi_values"`
-	ProbeSSIDs   []string  `bson:"probe_ssids" json:"probe_ssids"`
-	PacketCount  int       `bson:"packet_count" json:"packet_count"`
-	Vendor       string    `bson:"vendor" json:"vendor,omitempty"`
+	MACAddress       string    `bson:"mac_address" json:"mac_address"`
+	FirstSeen        time.Time `bson:"first_seen" json:"first_seen"`
+	LastSeen         time.Time `bson:"last_seen" json:"last_seen"`
+	RSSIValues       []int     `bson:"rssi_values" json:"rssi_values"`
+	ProbeSSIDs       []string  `bson:"probe_ssids" json:"probe_ssids"`
+	PacketCount      int       `bson:"packet_count" json:"packet_count"`
+	Vendor           string    `bson:"vendor" json:"vendor,omitempty"`
+	Connected        bool      `bson:"connected" json:"connected"`
+	LastConnected    time.Time `bson:"last_connected" json:"last_connected,omitempty"`
+	LastDisconnected time.Time `bson:"last_disconnected" json:"last_disconnected,omitempty"`
+	DataFrames       int       `bson:"data_frames" json:"data_frames"`
+	DataBytes        int64     `bson:"data_bytes" json:"data_bytes"`
 }
 
 type AccessPoint struct {
@@ -75,6 +80,9 @@ func main() {
 
 	r.POST("/ingest/device", ingestDevice)
 	r.POST("/ingest/access-point", ingestAccessPoint)
+	r.POST("/ingest/connection", ingestConnection)
+	r.POST("/ingest/disconnection", ingestDisconnection)
+	r.POST("/ingest/data", ingestData)
 
 	port := getEnv("PORT", "8080")
 	log.Printf("Starting API on :%s", port)
@@ -316,6 +324,105 @@ func ingestAccessPoint(c *gin.Context) {
 	_, err := db.Collection("access_points").UpdateOne(ctx, filter, update, opts)
 	if err != nil {
 		log.Printf("AP upsert error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func ingestConnection(c *gin.Context) {
+	var req struct {
+		MACAddress string `json:"mac_address" binding:"required"`
+		BSSID      string `json:"bssid"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"mac_address": req.MACAddress}
+	update := bson.M{
+		"$set": bson.M{
+			"connected":      true,
+			"last_connected": time.Now(),
+		},
+	}
+
+	opts := options.Update().SetUpsert(true)
+	_, err := db.Collection("devices").UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		log.Printf("Connection update error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func ingestDisconnection(c *gin.Context) {
+	var req struct {
+		MACAddress string `json:"mac_address" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"mac_address": req.MACAddress}
+	update := bson.M{
+		"$set": bson.M{
+			"connected":         false,
+			"last_disconnected": time.Now(),
+		},
+	}
+
+	opts := options.Update().SetUpsert(true)
+	_, err := db.Collection("devices").UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		log.Printf("Disconnection update error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func ingestData(c *gin.Context) {
+	var req struct {
+		MACAddress string `json:"mac_address" binding:"required"`
+		FrameCount int    `json:"frame_count"`
+		ByteCount  int64  `json:"byte_count"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{"mac_address": req.MACAddress}
+	update := bson.M{
+		"$inc": bson.M{
+			"data_frames": req.FrameCount,
+			"data_bytes":  req.ByteCount,
+		},
+	}
+
+	opts := options.Update().SetUpsert(true)
+	_, err := db.Collection("devices").UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		log.Printf("Data tracking error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

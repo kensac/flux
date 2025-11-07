@@ -39,7 +39,9 @@
             <tr>
                 <th onclick="sortDevices('mac_address')">MAC Address</th>
                 <th onclick="sortDevices('vendor')">Vendor</th>
+                <th onclick="sortDevices('connected')">Status</th>
                 <th onclick="sortDevices('probe_ssids')">Probe SSIDs</th>
+                <th onclick="sortDevices('data_bytes')">Data Usage</th>
                 <th onclick="sortDevices('last_seen')">Last Seen</th>
                 <th onclick="sortDevices('packet_count')">Packets</th>
                 <th onclick="sortDevices('rssi')">Avg RSSI</th>
@@ -95,6 +97,14 @@
         function avgRSSIValue(values) {
             if (!values || values.length === 0) return -999;
             return values.reduce((a, b) => a + b, 0) / values.length;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
         }
 
         async function loadStats() {
@@ -177,7 +187,9 @@
                 <tr>
                     <td>${d.mac_address}</td>
                     <td>${d.vendor || '-'}</td>
+                    <td>${d.connected ? '<b>CONNECTED</b>' : 'Probing'}</td>
                     <td>${d.probe_ssids && d.probe_ssids.length > 0 ? d.probe_ssids.join(', ') : '-'}</td>
+                    <td>${formatBytes(d.data_bytes || 0)}</td>
                     <td>${formatTime(d.last_seen)}</td>
                     <td>${d.packet_count || 0}</td>
                     <td>${avgRSSI(d.rssi_values)}</td>
