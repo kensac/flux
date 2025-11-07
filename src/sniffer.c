@@ -22,7 +22,7 @@ struct curl_response {
     size_t size;
 };
 
-static size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
+static size_t config_write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
     struct curl_response *mem = (struct curl_response *)userp;
 
@@ -56,7 +56,7 @@ static void read_config(sniffer_t *sniffer) {
     struct curl_response response = {0};
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, config_write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
 
