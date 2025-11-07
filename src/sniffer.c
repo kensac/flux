@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <time.h>
+
+#define CONFIG_FILE "/tmp/flux_channel_config.json"
 
 static void set_channel(const char *interface, int channel) {
     char cmd[256];
@@ -13,18 +17,63 @@ static void set_channel(const char *interface, int channel) {
     system(cmd);
 }
 
+// Read channel hopping config from JSON file
+static void read_config(sniffer_t *sniffer) {
+    FILE *f = fopen(CONFIG_FILE, "r");
+    if (!f) {
+        // Default values if file doesn't exist
+        sniffer->hopping_enabled = true;
+        sniffer->hopping_timeout_ms = 300;
+        return;
+    }
+
+    char buffer[256];
+    size_t len = fread(buffer, 1, sizeof(buffer) - 1, f);
+    buffer[len] = '\0';
+    fclose(f);
+
+    // Simple JSON parsing - look for "enabled" and "timeout_ms" fields
+    char *enabled_ptr = strstr(buffer, "\"enabled\":");
+    if (enabled_ptr) {
+        enabled_ptr += 10; // Skip past "enabled":
+        while (*enabled_ptr == ' ') enabled_ptr++;
+        sniffer->hopping_enabled = (strncmp(enabled_ptr, "true", 4) == 0);
+    }
+
+    char *timeout_ptr = strstr(buffer, "\"timeout_ms\":");
+    if (timeout_ptr) {
+        timeout_ptr += 13; // Skip past "timeout_ms":
+        sniffer->hopping_timeout_ms = atoi(timeout_ptr);
+        if (sniffer->hopping_timeout_ms < 50) sniffer->hopping_timeout_ms = 50;
+        if (sniffer->hopping_timeout_ms > 10000) sniffer->hopping_timeout_ms = 10000;
+    }
+}
+
 static void* channel_hopper(void *arg) {
     sniffer_t *sniffer = (sniffer_t *)arg;
     int channels[] = {1, 6, 11, 2, 7, 3, 8, 4, 9, 5, 10};
     int num_channels = sizeof(channels) / sizeof(channels[0]);
     int idx = 0;
+    time_t last_config_check = 0;
 
-    printf("Channel hopping started\n");
+    printf("Channel hopping thread started\n");
 
     while (sniffer->running) {
-        set_channel(sniffer->interface, channels[idx]);
-        idx = (idx + 1) % num_channels;
-        usleep(300000);
+        // Check config every 5 seconds
+        time_t now = time(NULL);
+        if (now - last_config_check >= 5) {
+            read_config(sniffer);
+            last_config_check = now;
+        }
+
+        // Only hop if enabled
+        if (sniffer->hopping_enabled) {
+            set_channel(sniffer->interface, channels[idx]);
+            idx = (idx + 1) % num_channels;
+        }
+
+        // Use configured timeout (convert ms to microseconds)
+        usleep(sniffer->hopping_timeout_ms * 1000);
     }
 
     return NULL;
@@ -36,6 +85,12 @@ int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url)
     memset(sniffer, 0, sizeof(sniffer_t));
     strncpy(sniffer->interface, interface, sizeof(sniffer->interface) - 1);
     strncpy(sniffer->api_url, api_url, sizeof(sniffer->api_url) - 1);
+
+    // Load initial channel hopping configuration
+    read_config(sniffer);
+    printf("Channel hopping: %s, timeout: %dms\n",
+           sniffer->hopping_enabled ? "enabled" : "disabled",
+           sniffer->hopping_timeout_ms);
 
     sniffer->handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
     if (sniffer->handle == NULL) {

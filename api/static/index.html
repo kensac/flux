@@ -18,6 +18,28 @@
 
     <hr>
 
+    <h2>Channel Hopping Control</h2>
+    <div style="background: #f0f0f0; padding: 10px; border-radius: 5px;">
+        <p>
+            <label>
+                <input type="checkbox" id="channelHoppingEnabled" onchange="updateChannelHopping()">
+                Enable Channel Hopping
+            </label>
+        </p>
+        <p>
+            <label>
+                Timeout (ms):
+                <input type="number" id="channelHoppingTimeout" min="50" max="10000" step="50" value="300" onchange="updateChannelHopping()" style="width: 80px;">
+            </label>
+            <span style="font-size: 0.9em; color: #666;">(50-10000ms, smaller = faster hopping)</span>
+        </p>
+        <p style="font-size: 0.9em; color: #666;">
+            Status: <span id="channelHoppingStatus">-</span>
+        </p>
+    </div>
+
+    <hr>
+
     <h2>Active Devices</h2>
     <p>
         <label><input type="checkbox" id="allowlistMode" onchange="toggleAllowlistMode()"> Allowlist Mode (show only approved devices)</label>
@@ -275,8 +297,62 @@
             }
         }
 
+        async function loadChannelConfig() {
+            try {
+                const res = await fetch(API_BASE + '/config/channel-hopping');
+                const data = await res.json();
+                document.getElementById('channelHoppingEnabled').checked = data.enabled;
+                document.getElementById('channelHoppingTimeout').value = data.timeout_ms;
+                updateChannelStatus(data);
+            } catch (err) {
+                console.error('Failed to load channel config:', err);
+                document.getElementById('channelHoppingStatus').textContent = 'Error loading config';
+            }
+        }
+
+        async function updateChannelHopping() {
+            const enabled = document.getElementById('channelHoppingEnabled').checked;
+            const timeoutMs = parseInt(document.getElementById('channelHoppingTimeout').value);
+
+            if (timeoutMs < 50 || timeoutMs > 10000) {
+                alert('Timeout must be between 50 and 10000ms');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_BASE + '/config/channel-hopping', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        enabled: enabled,
+                        timeout_ms: timeoutMs
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    updateChannelStatus(data.config);
+                } else {
+                    alert('Failed to update config: ' + (data.error || 'unknown error'));
+                }
+            } catch (err) {
+                console.error('Failed to update channel config:', err);
+                alert('Failed to update config: ' + err.message);
+            }
+        }
+
+        function updateChannelStatus(config) {
+            const status = document.getElementById('channelHoppingStatus');
+            if (config.enabled) {
+                status.textContent = 'Enabled, hopping every ' + config.timeout_ms + 'ms';
+                status.style.color = '#0a0';
+            } else {
+                status.textContent = 'Disabled';
+                status.style.color = '#a00';
+            }
+        }
+
         async function loadAll() {
-            await Promise.all([loadStats(), loadDevices(), loadAPs()]);
+            await Promise.all([loadStats(), loadDevices(), loadAPs(), loadChannelConfig()]);
             document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
         }
 

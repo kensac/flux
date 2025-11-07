@@ -12,6 +12,8 @@ typedef struct {
     pcap_t *handle;
     bool running;
     pthread_t hopper_thread;
+    bool hopping_enabled;
+    int hopping_timeout_ms;
 } sniffer_t;
 
 int sniffer_init(sniffer_t *sniffer, const char *interface, const char *api_url);

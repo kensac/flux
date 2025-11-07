@@ -32,6 +32,11 @@ func main() {
 		log.Printf("Warning: Failed to initialize historical collections: %v", err)
 	}
 
+	// Load channel hopping configuration
+	if err := loadChannelConfig(); err != nil {
+		log.Printf("Warning: Failed to load channel config: %v", err)
+	}
+
 	// Start background aggregation services
 	go startAggregationWorkers()
 
@@ -64,6 +69,10 @@ func main() {
 	r.GET("/metrics/history", getMetricsHistory)
 	r.GET("/metrics/device/:mac", getDeviceHistory)
 	r.GET("/metrics/summary", getMetricsSummary)
+
+	// Channel hopping configuration endpoints
+	r.GET("/config/channel-hopping", getChannelConfig)
+	r.PUT("/config/channel-hopping", updateChannelConfig)
 
 	// Start server
 	port := getEnv("PORT", "8080")
