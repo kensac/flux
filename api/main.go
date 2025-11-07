@@ -239,9 +239,8 @@ func ingestDevice(c *gin.Context) {
 			"last_seen": time.Now(),
 		},
 		"$setOnInsert": bson.M{
-			"first_seen":   time.Now(),
-			"probe_ssids":  []string{},
-			"packet_count": 0,
+			"first_seen":  time.Now(),
+			"probe_ssids": []string{},
 		},
 		"$push": bson.M{
 			"rssi_values": bson.M{
@@ -289,8 +288,7 @@ func ingestAccessPoint(c *gin.Context) {
 			"channel":   req.Channel,
 		},
 		"$setOnInsert": bson.M{
-			"first_seen":   time.Now(),
-			"beacon_count": 0,
+			"first_seen": time.Now(),
 		},
 		"$push": bson.M{
 			"rssi_values": bson.M{
