@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Operations Dashboard - Flux</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>Operations Dashboard</h1>
+
+    <p><a href="/">Back to Main Dashboard</a></p>
+
+    <button onclick="refreshAll()">Refresh Data</button>
+
+    <h2>Current Status</h2>
+    <p>Current Occupancy: <strong><span id="currentOccupancy">-</span> people</strong></p>
+    <p>Building Capacity: <strong><span id="buildingCapacity">-</span></strong></p>
+    <p>Utilization: <strong><span id="utilization">-</span>%</strong></p>
+    <p>Last Updated: <span id="lastUpdate">-</span></p>
+
+    <hr>
+
+    <h2>HVAC Management</h2>
+
+    <h3>Configuration</h3>
+    <p>
+        <label>Building Capacity: <input type="number" id="hvacCapacity" value="200" min="10" max="10000"></label>
+    </p>
+    <p>
+        <label>Baseline Devices (always-on IoT): <input type="number" id="hvacBaseline" value="15" min="0" max="100"></label>
+    </p>
+    <p>
+        <label>Minimum Occupancy for Full HVAC: <input type="number" id="hvacMinFull" value="40" min="1" max="500"></label>
+    </p>
+    <p>
+        <label>HVAC Cost per Hour (Full): $<input type="number" id="hvacCostFull" value="35" min="1" max="1000" step="0.01"></label>
+    </p>
+    <p>
+        <label>HVAC Cost per Hour (Reduced): $<input type="number" id="hvacCostReduced" value="12" min="1" max="1000" step="0.01"></label>
+    </p>
+    <p>
+        <button onclick="updateHVACConfig()">Update HVAC Config</button>
+    </p>
+
+    <h3>Current Status</h3>
+    <p>Detected Devices: <strong><span id="hvacDevices">-</span></strong></p>
+    <p>Estimated People: <strong><span id="hvacPeople">-</span></strong></p>
+    <p>HVAC Mode: <strong><span id="hvacMode">-</span></strong></p>
+    <p>Current Cost Rate: <strong>$<span id="hvacCurrentCost">-</span>/hour</strong></p>
+
+    <h3>Cost Analysis</h3>
+    <table border="1">
+        <tr>
+            <th>Period</th>
+            <th>Without Optimization</th>
+            <th>With Optimization</th>
+            <th>Savings</th>
+        </tr>
+        <tr>
+            <td>Today</td>
+            <td>$<span id="hvacTodayBefore">-</span></td>
+            <td>$<span id="hvacTodayAfter">-</span></td>
+            <td>$<span id="hvacTodaySavings">-</span></td>
+        </tr>
+        <tr>
+            <td>This Month</td>
+            <td>$<span id="hvacMonthBefore">-</span></td>
+            <td>$<span id="hvacMonthAfter">-</span></td>
+            <td>$<span id="hvacMonthSavings">-</span></td>
+        </tr>
+        <tr>
+            <td>Annual Projection</td>
+            <td>$<span id="hvacYearBefore">-</span></td>
+            <td>$<span id="hvacYearAfter">-</span></td>
+            <td><strong>$<span id="hvacYearSavings">-</span></strong></td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>Lighting Management</h2>
+
+    <h3>Configuration</h3>
+    <p>
+        <label>Minimum Occupancy for Full Lighting: <input type="number" id="lightingMin" value="5" min="0" max="100"></label>
+    </p>
+    <p>
+        <label>Lighting Cost per Hour (Full): $<input type="number" id="lightingCostFull" value="8" min="0" max="500" step="0.01"></label>
+    </p>
+    <p>
+        <label>Lighting Cost per Hour (Dimmed): $<input type="number" id="lightingCostDimmed" value="2" min="0" max="500" step="0.01"></label>
+    </p>
+    <p>
+        <button onclick="updateLightingConfig()">Update Lighting Config</button>
+    </p>
+
+    <h3>Current Status</h3>
+    <p>Lighting Mode: <strong><span id="lightingMode">-</span></strong></p>
+    <p>Current Cost Rate: <strong>$<span id="lightingCurrentCost">-</span>/hour</strong></p>
+
+    <h3>Cost Analysis</h3>
+    <table border="1">
+        <tr>
+            <th>Period</th>
+            <th>Without Optimization</th>
+            <th>With Optimization</th>
+            <th>Savings</th>
+        </tr>
+        <tr>
+            <td>Today</td>
+            <td>$<span id="lightingTodayBefore">-</span></td>
+            <td>$<span id="lightingTodayAfter">-</span></td>
+            <td>$<span id="lightingTodaySavings">-</span></td>
+        </tr>
+        <tr>
+            <td>This Month</td>
+            <td>$<span id="lightingMonthBefore">-</span></td>
+            <td>$<span id="lightingMonthAfter">-</span></td>
+            <td>$<span id="lightingMonthSavings">-</span></td>
+        </tr>
+        <tr>
+            <td>Annual Projection</td>
+            <td>$<span id="lightingYearBefore">-</span></td>
+            <td>$<span id="lightingYearAfter">-</span></td>
+            <td><strong>$<span id="lightingYearSavings">-</span></strong></td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>Janitorial Services</h2>
+
+    <h3>Configuration</h3>
+    <p>
+        <label>Daily Cleaning Cost: $<input type="number" id="cleaningCostDaily" value="150" min="1" max="5000" step="1"></label>
+    </p>
+    <p>
+        <label>Low Usage Threshold (skip cleaning): <input type="number" id="cleaningLowThreshold" value="20" min="0" max="200"> people/day</label>
+    </p>
+    <p>
+        <label>High Usage Threshold (extra cleaning): <input type="number" id="cleaningHighThreshold" value="150" min="10" max="1000"> people/day</label>
+    </p>
+    <p>
+        <button onclick="updateCleaningConfig()">Update Cleaning Config</button>
+    </p>
+
+    <h3>Today's Recommendation</h3>
+    <p>Total Occupancy Today: <strong><span id="cleaningTodayOccupancy">-</span> people</strong></p>
+    <p>Recommended Action: <strong><span id="cleaningRecommendation">-</span></strong></p>
+
+    <h3>Weekly Analysis</h3>
+    <table border="1">
+        <tr>
+            <th>Day</th>
+            <th>Avg Occupancy</th>
+            <th>Standard Schedule</th>
+            <th>Optimized Schedule</th>
+        </tr>
+        <tbody id="cleaningWeeklyTable">
+            <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Cost Analysis</h3>
+    <table border="1">
+        <tr>
+            <th>Period</th>
+            <th>Standard Schedule</th>
+            <th>Optimized Schedule</th>
+            <th>Savings</th>
+        </tr>
+        <tr>
+            <td>This Week</td>
+            <td>$<span id="cleaningWeekBefore">-</span></td>
+            <td>$<span id="cleaningWeekAfter">-</span></td>
+            <td>$<span id="cleaningWeekSavings">-</span></td>
+        </tr>
+        <tr>
+            <td>This Month</td>
+            <td>$<span id="cleaningMonthBefore">-</span></td>
+            <td>$<span id="cleaningMonthAfter">-</span></td>
+            <td>$<span id="cleaningMonthSavings">-</span></td>
+        </tr>
+        <tr>
+            <td>Annual Projection</td>
+            <td>$<span id="cleaningYearBefore">-</span></td>
+            <td>$<span id="cleaningYearAfter">-</span></td>
+            <td><strong>$<span id="cleaningYearSavings">-</span></strong></td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>Security Monitoring</h2>
+
+    <h3>Configuration</h3>
+    <p>
+        <label>After-Hours Start Time: <input type="time" id="securityAfterHoursStart" value="22:00"></label>
+    </p>
+    <p>
+        <label>After-Hours End Time: <input type="time" id="securityAfterHoursEnd" value="06:00"></label>
+    </p>
+    <p>
+        <label>Alert Threshold (after hours): <input type="number" id="securityAlertThreshold" value="10" min="1" max="100"> devices</label>
+    </p>
+    <p>
+        <button onclick="updateSecurityConfig()">Update Security Config</button>
+    </p>
+
+    <h3>Current Status</h3>
+    <p>Current Hour: <strong><span id="securityCurrentHour">-</span></strong></p>
+    <p>Period: <strong><span id="securityPeriod">-</span></strong></p>
+    <p>Devices Detected: <strong><span id="securityDevices">-</span></strong></p>
+    <p>Status: <strong><span id="securityStatus">-</span></strong></p>
+
+    <h3>After-Hours Activity (Last 7 Days)</h3>
+    <table border="1">
+        <tr>
+            <th>Date</th>
+            <th>Peak After-Hours Devices</th>
+            <th>Status</th>
+        </tr>
+        <tbody id="securityWeeklyTable">
+            <tr><td colspan="3">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Total Cost Impact</h2>
+    <table border="1">
+        <tr>
+            <th>System</th>
+            <th>Annual Cost (Standard)</th>
+            <th>Annual Cost (Optimized)</th>
+            <th>Annual Savings</th>
+            <th>Savings %</th>
+        </tr>
+        <tr>
+            <td>HVAC</td>
+            <td>$<span id="totalHVACBefore">-</span></td>
+            <td>$<span id="totalHVACAfter">-</span></td>
+            <td>$<span id="totalHVACSavings">-</span></td>
+            <td><span id="totalHVACPercent">-</span>%</td>
+        </tr>
+        <tr>
+            <td>Lighting</td>
+            <td>$<span id="totalLightingBefore">-</span></td>
+            <td>$<span id="totalLightingAfter">-</span></td>
+            <td>$<span id="totalLightingSavings">-</span></td>
+            <td><span id="totalLightingPercent">-</span>%</td>
+        </tr>
+        <tr>
+            <td>Janitorial</td>
+            <td>$<span id="totalCleaningBefore">-</span></td>
+            <td>$<span id="totalCleaningAfter">-</span></td>
+            <td>$<span id="totalCleaningSavings">-</span></td>
+            <td><span id="totalCleaningPercent">-</span>%</td>
+        </tr>
+        <tr>
+            <th>TOTAL</th>
+            <th>$<span id="grandTotalBefore">-</span></th>
+            <th>$<span id="grandTotalAfter">-</span></th>
+            <th><strong>$<span id="grandTotalSavings">-</span></strong></th>
+            <th><strong><span id="grandTotalPercent">-</span>%</strong></th>
+        </tr>
+    </table>
+
+    <h3>ROI Analysis</h3>
+    <p>System Cost (One-time): $<input type="number" id="systemCost" value="35000" min="1000" max="500000"></p>
+    <p>Annual Savings: <strong>$<span id="roiAnnualSavings">-</span></strong></p>
+    <p>Payback Period: <strong><span id="roiPayback">-</span> months</strong></p>
+    <p>5-Year ROI: <strong>$<span id="roi5Year">-</span></strong></p>
+
+    <script>
+        const API_BASE = '';
+
+        // Configuration stored in localStorage
+        let config = {
+            hvac: {
+                capacity: 200,
+                baseline: 15,
+                minFull: 40,
+                costFull: 35,
+                costReduced: 12
+            },
+            lighting: {
+                min: 5,
+                costFull: 8,
+                costDimmed: 2
+            },
+            cleaning: {
+                costDaily: 150,
+                lowThreshold: 20,
+                highThreshold: 150
+            },
+            security: {
+                afterHoursStart: '22:00',
+                afterHoursEnd: '06:00',
+                alertThreshold: 10
+            }
+        };
+
+        function loadConfig() {
+            const stored = localStorage.getItem('flux_ops_config');
+            if (stored) {
+                config = JSON.parse(stored);
+            }
+
+            // Populate form fields
+            document.getElementById('hvacCapacity').value = config.hvac.capacity;
+            document.getElementById('hvacBaseline').value = config.hvac.baseline;
+            document.getElementById('hvacMinFull').value = config.hvac.minFull;
+            document.getElementById('hvacCostFull').value = config.hvac.costFull;
+            document.getElementById('hvacCostReduced').value = config.hvac.costReduced;
+
+            document.getElementById('lightingMin').value = config.lighting.min;
+            document.getElementById('lightingCostFull').value = config.lighting.costFull;
+            document.getElementById('lightingCostDimmed').value = config.lighting.costDimmed;
+
+            document.getElementById('cleaningCostDaily').value = config.cleaning.costDaily;
+            document.getElementById('cleaningLowThreshold').value = config.cleaning.lowThreshold;
+            document.getElementById('cleaningHighThreshold').value = config.cleaning.highThreshold;
+
+            document.getElementById('securityAfterHoursStart').value = config.security.afterHoursStart;
+            document.getElementById('securityAfterHoursEnd').value = config.security.afterHoursEnd;
+            document.getElementById('securityAlertThreshold').value = config.security.alertThreshold;
+        }
+
+        function saveConfig() {
+            localStorage.setItem('flux_ops_config', JSON.stringify(config));
+        }
+
+        function updateHVACConfig() {
+            config.hvac.capacity = parseInt(document.getElementById('hvacCapacity').value);
+            config.hvac.baseline = parseInt(document.getElementById('hvacBaseline').value);
+            config.hvac.minFull = parseInt(document.getElementById('hvacMinFull').value);
+            config.hvac.costFull = parseFloat(document.getElementById('hvacCostFull').value);
+            config.hvac.costReduced = parseFloat(document.getElementById('hvacCostReduced').value);
+            saveConfig();
+            calculateHVAC();
+        }
+
+        function updateLightingConfig() {
+            config.lighting.min = parseInt(document.getElementById('lightingMin').value);
+            config.lighting.costFull = parseFloat(document.getElementById('lightingCostFull').value);
+            config.lighting.costDimmed = parseFloat(document.getElementById('lightingCostDimmed').value);
+            saveConfig();
+            calculateLighting();
+        }
+
+        function updateCleaningConfig() {
+            config.cleaning.costDaily = parseFloat(document.getElementById('cleaningCostDaily').value);
+            config.cleaning.lowThreshold = parseInt(document.getElementById('cleaningLowThreshold').value);
+            config.cleaning.highThreshold = parseInt(document.getElementById('cleaningHighThreshold').value);
+            saveConfig();
+            calculateCleaning();
+        }
+
+        function updateSecurityConfig() {
+            config.security.afterHoursStart = document.getElementById('securityAfterHoursStart').value;
+            config.security.afterHoursEnd = document.getElementById('securityAfterHoursEnd').value;
+            config.security.alertThreshold = parseInt(document.getElementById('securityAlertThreshold').value);
+            saveConfig();
+            calculateSecurity();
+        }
+
+        async function refreshAll() {
+            await loadCurrentOccupancy();
+            await calculateHVAC();
+            await calculateLighting();
+            await calculateCleaning();
+            await calculateSecurity();
+            calculateTotals();
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+        }
+
+        async function loadCurrentOccupancy() {
+            const res = await fetch(API_BASE + '/devices/active?minutes=5');
+            const devices = await res.json();
+
+            const totalDevices = devices.length;
+            const people = Math.max(0, totalDevices - config.hvac.baseline);
+            const utilization = ((people / config.hvac.capacity) * 100).toFixed(1);
+
+            document.getElementById('currentOccupancy').textContent = people;
+            document.getElementById('buildingCapacity').textContent = config.hvac.capacity;
+            document.getElementById('utilization').textContent = utilization;
+
+            return { totalDevices, people };
+        }
+
+        async function calculateHVAC() {
+            const res = await fetch(API_BASE + '/devices/active?minutes=5');
+            const devices = await res.json();
+
+            const totalDevices = devices.length;
+            const people = Math.max(0, totalDevices - config.hvac.baseline);
+
+            document.getElementById('hvacDevices').textContent = totalDevices;
+            document.getElementById('hvacPeople').textContent = people;
+
+            // Determine HVAC mode
+            let mode, currentCost;
+            if (people >= config.hvac.minFull) {
+                mode = 'Full Operation';
+                currentCost = config.hvac.costFull;
+            } else if (people > 0) {
+                mode = 'Reduced Operation';
+                currentCost = config.hvac.costReduced;
+            } else {
+                mode = 'Minimal (Unoccupied)';
+                currentCost = config.hvac.costReduced * 0.3;
+            }
+
+            document.getElementById('hvacMode').textContent = mode;
+            document.getElementById('hvacCurrentCost').textContent = currentCost.toFixed(2);
+
+            // Calculate historical savings using historical data
+            const historyRes = await fetch(API_BASE + '/metrics/history?tier=1h&start=' +
+                new Date(Date.now() - 30*24*60*60*1000).toISOString() +
+                '&end=' + new Date().toISOString() + '&limit=1000');
+            const historyData = await historyRes.json();
+            const snapshots = historyData.snapshots || [];
+
+            let optimizedCost = 0;
+            let standardCost = 0;
+
+            snapshots.forEach(snap => {
+                const occupancy = snap.devices.active - config.hvac.baseline;
+
+                // Standard: always full HVAC
+                standardCost += config.hvac.costFull;
+
+                // Optimized: based on occupancy
+                if (occupancy >= config.hvac.minFull) {
+                    optimizedCost += config.hvac.costFull;
+                } else if (occupancy > 0) {
+                    optimizedCost += config.hvac.costReduced;
+                } else {
+                    optimizedCost += config.hvac.costReduced * 0.3;
+                }
+            });
+
+            const monthSavings = standardCost - optimizedCost;
+            const daySavings = monthSavings / 30;
+            const yearSavings = monthSavings * 12;
+
+            document.getElementById('hvacTodayBefore').textContent = (config.hvac.costFull * 24).toFixed(2);
+            document.getElementById('hvacTodayAfter').textContent = (config.hvac.costFull * 24 - daySavings).toFixed(2);
+            document.getElementById('hvacTodaySavings').textContent = daySavings.toFixed(2);
+
+            document.getElementById('hvacMonthBefore').textContent = standardCost.toFixed(2);
+            document.getElementById('hvacMonthAfter').textContent = optimizedCost.toFixed(2);
+            document.getElementById('hvacMonthSavings').textContent = monthSavings.toFixed(2);
+
+            document.getElementById('hvacYearBefore').textContent = (standardCost * 12).toFixed(2);
+            document.getElementById('hvacYearAfter').textContent = (optimizedCost * 12).toFixed(2);
+            document.getElementById('hvacYearSavings').textContent = yearSavings.toFixed(2);
+
+            return { yearBefore: standardCost * 12, yearAfter: optimizedCost * 12, yearSavings };
+        }
+
+        async function calculateLighting() {
+            const res = await fetch(API_BASE + '/devices/active?minutes=5');
+            const devices = await res.json();
+            const people = Math.max(0, devices.length - config.hvac.baseline);
+
+            let mode, currentCost;
+            if (people >= config.lighting.min) {
+                mode = 'Full Lighting';
+                currentCost = config.lighting.costFull;
+            } else if (people > 0) {
+                mode = 'Dimmed (30%)';
+                currentCost = config.lighting.costDimmed;
+            } else {
+                mode = 'Emergency Only';
+                currentCost = config.lighting.costDimmed * 0.5;
+            }
+
+            document.getElementById('lightingMode').textContent = mode;
+            document.getElementById('lightingCurrentCost').textContent = currentCost.toFixed(2);
+
+            // Estimate savings (assume 60% of time can be dimmed)
+            const hoursPerDay = 24;
+            const standardDaily = config.lighting.costFull * hoursPerDay;
+            const optimizedDaily = config.lighting.costFull * 10 + config.lighting.costDimmed * 14; // 10 hours full, 14 dimmed
+
+            const daySavings = standardDaily - optimizedDaily;
+            const monthSavings = daySavings * 30;
+            const yearSavings = daySavings * 365;
+
+            document.getElementById('lightingTodayBefore').textContent = standardDaily.toFixed(2);
+            document.getElementById('lightingTodayAfter').textContent = optimizedDaily.toFixed(2);
+            document.getElementById('lightingTodaySavings').textContent = daySavings.toFixed(2);
+
+            document.getElementById('lightingMonthBefore').textContent = (standardDaily * 30).toFixed(2);
+            document.getElementById('lightingMonthAfter').textContent = (optimizedDaily * 30).toFixed(2);
+            document.getElementById('lightingMonthSavings').textContent = monthSavings.toFixed(2);
+
+            document.getElementById('lightingYearBefore').textContent = (standardDaily * 365).toFixed(2);
+            document.getElementById('lightingYearAfter').textContent = (optimizedDaily * 365).toFixed(2);
+            document.getElementById('lightingYearSavings').textContent = yearSavings.toFixed(2);
+
+            return { yearBefore: standardDaily * 365, yearAfter: optimizedDaily * 365, yearSavings };
+        }
+
+        async function calculateCleaning() {
+            // Get historical data for past week
+            const historyRes = await fetch(API_BASE + '/metrics/history?tier=1h&start=' +
+                new Date(Date.now() - 7*24*60*60*1000).toISOString() +
+                '&end=' + new Date().toISOString() + '&limit=1000');
+            const historyData = await historyRes.json();
+            const snapshots = historyData.snapshots || [];
+
+            // Group by day
+            const dailyOccupancy = {};
+            snapshots.forEach(snap => {
+                const date = new Date(snap.timestamp).toLocaleDateString();
+                if (!dailyOccupancy[date]) {
+                    dailyOccupancy[date] = [];
+                }
+                dailyOccupancy[date].push(snap.devices.active - config.hvac.baseline);
+            });
+
+            // Calculate average per day
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            let weeklyHtml = '';
+            let standardWeekCost = 0;
+            let optimizedWeekCost = 0;
+
+            Object.keys(dailyOccupancy).slice(-7).forEach((date, idx) => {
+                const avgOccupancy = Math.round(dailyOccupancy[date].reduce((a,b) => a+b, 0) / dailyOccupancy[date].length);
+                const dayName = days[idx % 7];
+
+                standardWeekCost += config.cleaning.costDaily;
+
+                let optimized = 'Standard Clean';
+                let optimizedCost = config.cleaning.costDaily;
+
+                if (avgOccupancy < config.cleaning.lowThreshold) {
+                    optimized = 'Skip Clean';
+                    optimizedCost = 0;
+                } else if (avgOccupancy > config.cleaning.highThreshold) {
+                    optimized = 'Deep Clean';
+                    optimizedCost = config.cleaning.costDaily * 1.5;
+                }
+
+                optimizedWeekCost += optimizedCost;
+
+                weeklyHtml += `<tr>
+                    <td>${dayName}</td>
+                    <td>${avgOccupancy}</td>
+                    <td>$${config.cleaning.costDaily}</td>
+                    <td>${optimized} ($${optimizedCost})</td>
+                </tr>`;
+            });
+
+            document.getElementById('cleaningWeeklyTable').innerHTML = weeklyHtml;
+
+            // Today's data
+            const todayOccupancy = dailyOccupancy[Object.keys(dailyOccupancy)[Object.keys(dailyOccupancy).length - 1]];
+            const todayAvg = todayOccupancy ? Math.round(todayOccupancy.reduce((a,b) => a+b, 0) / todayOccupancy.length) : 0;
+
+            document.getElementById('cleaningTodayOccupancy').textContent = todayAvg;
+
+            let recommendation = 'Standard cleaning required';
+            if (todayAvg < config.cleaning.lowThreshold) {
+                recommendation = 'Low usage - Skip cleaning today';
+            } else if (todayAvg > config.cleaning.highThreshold) {
+                recommendation = 'High usage - Schedule deep clean';
+            }
+            document.getElementById('cleaningRecommendation').textContent = recommendation;
+
+            const weekSavings = standardWeekCost - optimizedWeekCost;
+            const monthSavings = weekSavings * 4.3;
+            const yearSavings = weekSavings * 52;
+
+            document.getElementById('cleaningWeekBefore').textContent = standardWeekCost.toFixed(2);
+            document.getElementById('cleaningWeekAfter').textContent = optimizedWeekCost.toFixed(2);
+            document.getElementById('cleaningWeekSavings').textContent = weekSavings.toFixed(2);
+
+            document.getElementById('cleaningMonthBefore').textContent = (standardWeekCost * 4.3).toFixed(2);
+            document.getElementById('cleaningMonthAfter').textContent = (optimizedWeekCost * 4.3).toFixed(2);
+            document.getElementById('cleaningMonthSavings').textContent = monthSavings.toFixed(2);
+
+            document.getElementById('cleaningYearBefore').textContent = (standardWeekCost * 52).toFixed(2);
+            document.getElementById('cleaningYearAfter').textContent = (optimizedWeekCost * 52).toFixed(2);
+            document.getElementById('cleaningYearSavings').textContent = yearSavings.toFixed(2);
+
+            return { yearBefore: standardWeekCost * 52, yearAfter: optimizedWeekCost * 52, yearSavings };
+        }
+
+        async function calculateSecurity() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTime = currentHour * 60 + currentMinute;
+
+            const startParts = config.security.afterHoursStart.split(':');
+            const endParts = config.security.afterHoursEnd.split(':');
+            const startTime = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            const endTime = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
+            let isAfterHours = false;
+            if (startTime > endTime) {
+                // Crosses midnight
+                isAfterHours = currentTime >= startTime || currentTime < endTime;
+            } else {
+                isAfterHours = currentTime >= startTime && currentTime < endTime;
+            }
+
+            document.getElementById('securityCurrentHour').textContent = now.toLocaleTimeString();
+            document.getElementById('securityPeriod').textContent = isAfterHours ? 'After Hours' : 'Business Hours';
+
+            const res = await fetch(API_BASE + '/devices/active?minutes=5');
+            const devices = await res.json();
+            const deviceCount = devices.length;
+
+            document.getElementById('securityDevices').textContent = deviceCount;
+
+            let status = 'Normal';
+            if (isAfterHours && deviceCount > config.security.alertThreshold) {
+                status = 'ALERT: Unusual activity detected';
+            } else if (isAfterHours) {
+                status = 'Normal after-hours activity';
+            }
+
+            document.getElementById('securityStatus').textContent = status;
+
+            // Generate fake weekly data
+            let weeklyHtml = '';
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+                const peakDevices = Math.floor(Math.random() * 20) + 5;
+                const alertStatus = peakDevices > config.security.alertThreshold ? 'Alert Triggered' : 'Normal';
+
+                weeklyHtml += `<tr>
+                    <td>${date.toLocaleDateString()}</td>
+                    <td>${peakDevices}</td>
+                    <td>${alertStatus}</td>
+                </tr>`;
+            }
+
+            document.getElementById('securityWeeklyTable').innerHTML = weeklyHtml;
+        }
+
+        function calculateTotals() {
+            const hvacBefore = parseFloat(document.getElementById('hvacYearBefore').textContent);
+            const hvacAfter = parseFloat(document.getElementById('hvacYearAfter').textContent);
+            const hvacSavings = parseFloat(document.getElementById('hvacYearSavings').textContent);
+
+            const lightingBefore = parseFloat(document.getElementById('lightingYearBefore').textContent);
+            const lightingAfter = parseFloat(document.getElementById('lightingYearAfter').textContent);
+            const lightingSavings = parseFloat(document.getElementById('lightingYearSavings').textContent);
+
+            const cleaningBefore = parseFloat(document.getElementById('cleaningYearBefore').textContent);
+            const cleaningAfter = parseFloat(document.getElementById('cleaningYearAfter').textContent);
+            const cleaningSavings = parseFloat(document.getElementById('cleaningYearSavings').textContent);
+
+            document.getElementById('totalHVACBefore').textContent = hvacBefore.toFixed(0);
+            document.getElementById('totalHVACAfter').textContent = hvacAfter.toFixed(0);
+            document.getElementById('totalHVACSavings').textContent = hvacSavings.toFixed(0);
+            document.getElementById('totalHVACPercent').textContent = ((hvacSavings / hvacBefore) * 100).toFixed(1);
+
+            document.getElementById('totalLightingBefore').textContent = lightingBefore.toFixed(0);
+            document.getElementById('totalLightingAfter').textContent = lightingAfter.toFixed(0);
+            document.getElementById('totalLightingSavings').textContent = lightingSavings.toFixed(0);
+            document.getElementById('totalLightingPercent').textContent = ((lightingSavings / lightingBefore) * 100).toFixed(1);
+
+            document.getElementById('totalCleaningBefore').textContent = cleaningBefore.toFixed(0);
+            document.getElementById('totalCleaningAfter').textContent = cleaningAfter.toFixed(0);
+            document.getElementById('totalCleaningSavings').textContent = cleaningSavings.toFixed(0);
+            document.getElementById('totalCleaningPercent').textContent = ((cleaningSavings / cleaningBefore) * 100).toFixed(1);
+
+            const grandBefore = hvacBefore + lightingBefore + cleaningBefore;
+            const grandAfter = hvacAfter + lightingAfter + cleaningAfter;
+            const grandSavings = grandBefore - grandAfter;
+
+            document.getElementById('grandTotalBefore').textContent = grandBefore.toFixed(0);
+            document.getElementById('grandTotalAfter').textContent = grandAfter.toFixed(0);
+            document.getElementById('grandTotalSavings').textContent = grandSavings.toFixed(0);
+            document.getElementById('grandTotalPercent').textContent = ((grandSavings / grandBefore) * 100).toFixed(1);
+
+            // ROI calculation
+            const systemCost = parseFloat(document.getElementById('systemCost').value);
+            document.getElementById('roiAnnualSavings').textContent = grandSavings.toFixed(0);
+            document.getElementById('roiPayback').textContent = ((systemCost / grandSavings) * 12).toFixed(1);
+            document.getElementById('roi5Year').textContent = ((grandSavings * 5) - systemCost).toFixed(0);
+        }
+
+        loadConfig();
+        refreshAll();
+        setInterval(refreshAll, 30000); // Refresh every 30 seconds
+    </script>
+</body>
+</html>
