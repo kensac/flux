@@ -39,7 +39,9 @@ services:
           memory: 256M
 
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     restart: "no"
     ports:
       - "8080:8080"
@@ -49,21 +51,6 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    networks:
-      - flux-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 128M
-
-  frontend:
-    build: ./frontend
-    restart: "no"
-    ports:
-      - "3000:80"
-    depends_on:
-      - api
     networks:
       - flux-network
     deploy:

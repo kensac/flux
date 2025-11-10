@@ -73,10 +73,24 @@ func main() {
 	// Setup Gin router
 	r := gin.Default()
 
-	// Static files and home page
+	// Static files (operations dashboard, swagger docs)
 	r.Static("/static", "./static")
+
+	// Serve React frontend
+	r.Static("/app", "./static/app")
+	r.NoRoute(func(c *gin.Context) {
+		// If path starts with /api, it's a missing API route
+		if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+			c.JSON(404, gin.H{"error": "API endpoint not found"})
+			return
+		}
+		// Otherwise serve the React app (SPA routing)
+		c.File("./static/app/index.html")
+	})
+
+	// Legacy: redirect root to app
 	r.GET("/", func(c *gin.Context) {
-		c.File("./static/index.html")
+		c.Redirect(302, "/app")
 	})
 
 	// Device endpoints
