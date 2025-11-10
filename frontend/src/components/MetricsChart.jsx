@@ -9,15 +9,17 @@ export default function MetricsChart({ data, loading }) {
   const formatChartData = () => {
     if (!data || !data.snapshots) return [];
     
-    return data.snapshots.map(snapshot => ({
-      timestamp: new Date(snapshot.timestamp).getTime(),
-      time: format(new Date(snapshot.timestamp), 'HH:mm'),
-      totalDevices: snapshot.devices.total,
-      activeDevices: snapshot.devices.active,
-      connectedDevices: snapshot.devices.connected,
-      totalAPs: snapshot.access_points.total,
-      activeAPs: snapshot.access_points.active,
-    }));
+    return data.snapshots
+      .map(snapshot => ({
+        timestamp: new Date(snapshot.timestamp).getTime(),
+        time: format(new Date(snapshot.timestamp), 'h:mm a'),
+        totalDevices: snapshot.devices.total,
+        activeDevices: snapshot.devices.active,
+        connectedDevices: snapshot.devices.connected,
+        totalAPs: snapshot.access_points.total,
+        activeAPs: snapshot.access_points.active,
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp); // Sort oldest to newest
   };
 
   const chartData = formatChartData();
@@ -78,14 +80,6 @@ export default function MetricsChart({ data, loading }) {
             />
             {selectedMetric === 'devices' ? (
               <>
-                <Line 
-                  type="monotone" 
-                  dataKey="totalDevices" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Total Devices"
-                  dot={false}
-                />
                 <Line 
                   type="monotone" 
                   dataKey="activeDevices" 
