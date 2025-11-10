@@ -93,6 +93,9 @@ func main() {
 		c.Redirect(302, "/app")
 	})
 
+	// API endpoints - available at both root and /api prefix for compatibility
+	api := r.Group("/api")
+
 	// Device endpoints
 	r.GET("/devices", getDevices)
 	r.GET("/devices/active", getActiveDevices)
@@ -100,23 +103,38 @@ func main() {
 	r.POST("/ingest/connection", ingestConnection)
 	r.POST("/ingest/disconnection", ingestDisconnection)
 	r.POST("/ingest/data", ingestData)
+	api.GET("/devices", getDevices)
+	api.GET("/devices/active", getActiveDevices)
+	api.POST("/ingest/device", ingestDevice)
+	api.POST("/ingest/connection", ingestConnection)
+	api.POST("/ingest/disconnection", ingestDisconnection)
+	api.POST("/ingest/data", ingestData)
 
 	// Access point endpoints
 	r.GET("/access-points", getAccessPoints)
 	r.GET("/access-points/active", getActiveAccessPoints)
 	r.POST("/ingest/access-point", ingestAccessPoint)
+	api.GET("/access-points", getAccessPoints)
+	api.GET("/access-points/active", getActiveAccessPoints)
+	api.POST("/ingest/access-point", ingestAccessPoint)
 
 	// Stats endpoint
 	r.GET("/stats", getStats)
+	api.GET("/stats", getStats)
 
 	// Historical data query endpoints
 	r.GET("/metrics/history", getMetricsHistory)
 	r.GET("/metrics/device/:mac", getDeviceHistory)
 	r.GET("/metrics/summary", getMetricsSummary)
+	api.GET("/metrics/history", getMetricsHistory)
+	api.GET("/metrics/device/:mac", getDeviceHistory)
+	api.GET("/metrics/summary", getMetricsSummary)
 
 	// Channel hopping configuration endpoints
 	r.GET("/config/channel-hopping", getChannelConfig)
 	r.PUT("/config/channel-hopping", updateChannelConfig)
+	api.GET("/config/channel-hopping", getChannelConfig)
+	api.PUT("/config/channel-hopping", updateChannelConfig)
 
 	// Start server
 	port := getEnv("PORT", "8080")
