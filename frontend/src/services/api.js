@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Use VITE_API_URL env var, fallback to relative /api path
+const baseURL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
