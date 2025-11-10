@@ -1,0 +1,437 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0f172a;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+/* ============================================
+   LAYOUT COMPONENTS
+   ============================================ */
+
+.app-container {
+  @apply min-h-screen bg-slate-900;
+}
+
+.app-header {
+  @apply bg-slate-800 border-b border-slate-700 shadow-lg;
+}
+
+.app-header-content {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+}
+
+.app-header-inner {
+  @apply flex items-center justify-between;
+}
+
+.app-header-branding {
+  @apply flex items-center gap-3;
+}
+
+.app-header-logo {
+  @apply w-10 h-10 text-primary-400;
+}
+
+.app-header-titles {
+  /* Container for title and subtitle */
+}
+
+.app-header-title {
+  @apply text-3xl font-bold text-white;
+}
+
+.app-header-subtitle {
+  @apply text-slate-400 text-sm;
+}
+
+.app-header-actions {
+  @apply flex items-center gap-4;
+}
+
+.app-header-meta {
+  @apply text-right;
+}
+
+.app-main {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+}
+
+.app-footer {
+  @apply bg-slate-800 border-t border-slate-700 mt-12;
+}
+
+.app-footer-content {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+}
+
+.app-footer-text {
+  @apply text-center text-slate-400 text-sm;
+}
+
+/* ============================================
+   SECTION SPACING
+   ============================================ */
+
+.section-spacing {
+  @apply mb-8;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+
+.card {
+  @apply bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700;
+}
+
+.card-header {
+  @apply text-2xl font-bold text-white mb-4 flex items-center gap-2;
+}
+
+.card-header-icon {
+  @apply w-6 h-6 text-primary-400;
+}
+
+.stat-card {
+  @apply bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg shadow-lg p-6 border border-slate-700 hover:border-primary-500 transition-all;
+}
+
+.stat-card-content {
+  @apply flex items-center justify-between;
+}
+
+.stat-card-info {
+  /* Container for label and value */
+}
+
+.stat-card-label {
+  @apply text-slate-400 text-sm font-medium;
+}
+
+.stat-card-value {
+  @apply text-3xl font-bold text-white mt-2;
+}
+
+.stat-card-icon {
+  @apply w-12 h-12;
+}
+
+/* ============================================
+   STATS GRID
+   ============================================ */
+
+.stats-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.table-container {
+  @apply overflow-x-auto rounded-lg border border-slate-700;
+}
+
+.table {
+  @apply min-w-full divide-y divide-slate-700;
+}
+
+.table-head {
+  @apply bg-slate-900;
+}
+
+.table-header-cell {
+  @apply px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider;
+}
+
+.table-body {
+  @apply bg-slate-800 divide-y divide-slate-700;
+}
+
+.table-row {
+  @apply hover:bg-slate-700/50;
+}
+
+.table-cell {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-slate-200;
+}
+
+.table-cell-mono {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-slate-200 font-mono;
+}
+
+.table-cell-muted {
+  @apply px-6 py-4 whitespace-nowrap text-xs text-slate-400;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900;
+}
+
+.btn-primary {
+  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+}
+
+.btn-secondary {
+  @apply bg-slate-700 text-slate-200 hover:bg-slate-600 focus:ring-slate-500;
+}
+
+.btn-icon {
+  @apply flex items-center gap-2;
+}
+
+.icon-sm {
+  @apply w-4 h-4;
+}
+
+/* ============================================
+   FORM INPUTS
+   ============================================ */
+
+.input {
+  @apply bg-slate-700 border border-slate-600 text-slate-100 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+.form-label {
+  @apply block text-slate-300 font-medium mb-2;
+}
+
+.form-group {
+  /* Container for form field */
+}
+
+/* ============================================
+   TOGGLE SWITCH
+   ============================================ */
+
+.toggle-switch {
+  @apply relative inline-flex h-5 w-9 items-center rounded-full transition-colors;
+}
+
+.toggle-switch-active {
+  @apply bg-primary-600;
+}
+
+.toggle-switch-inactive {
+  @apply bg-slate-600;
+}
+
+.toggle-switch-knob {
+  @apply inline-block h-3 w-3 transform rounded-full bg-white transition-transform;
+}
+
+.toggle-switch-knob-active {
+  @apply translate-x-5;
+}
+
+.toggle-switch-knob-inactive {
+  @apply translate-x-1;
+}
+
+.toggle-label {
+  @apply flex items-center justify-between;
+}
+
+/* ============================================
+   BADGES & STATUS INDICATORS
+   ============================================ */
+
+.badge {
+  @apply px-2 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-connected {
+  @apply bg-green-900/50 text-green-300;
+}
+
+.badge-probe {
+  @apply bg-slate-700 text-slate-300;
+}
+
+.badge-secure {
+  @apply bg-green-900/50 text-green-300;
+}
+
+.badge-open {
+  @apply bg-red-900/50 text-red-300;
+}
+
+.badge-channel {
+  @apply px-2 py-1 bg-primary-900/50 text-primary-300 rounded text-xs font-semibold;
+}
+
+/* ============================================
+   SIGNAL STRENGTH COLORS
+   ============================================ */
+
+.signal-excellent {
+  @apply text-green-400 font-semibold;
+}
+
+.signal-good {
+  @apply text-yellow-400 font-semibold;
+}
+
+.signal-weak {
+  @apply text-red-400 font-semibold;
+}
+
+.signal-unknown {
+  @apply text-slate-400;
+}
+
+/* ============================================
+   TEXT UTILITIES
+   ============================================ */
+
+.text-muted {
+  @apply text-slate-400;
+}
+
+.text-info {
+  @apply text-slate-300;
+}
+
+.text-highlight {
+  @apply text-white font-semibold;
+}
+
+.text-xs-muted {
+  @apply text-xs text-slate-400;
+}
+
+.text-sm-info {
+  @apply text-sm text-slate-300;
+}
+
+/* ============================================
+   LOADING & EMPTY STATES
+   ============================================ */
+
+.loading-state {
+  @apply text-center py-8 text-slate-400;
+}
+
+.empty-state {
+  @apply text-center py-8 text-slate-400;
+}
+
+.loading-spinner {
+  @apply animate-spin;
+}
+
+/* ============================================
+   CHART COMPONENTS
+   ============================================ */
+
+.chart-container {
+  @apply w-full;
+}
+
+.chart-header {
+  @apply flex items-center justify-between mb-6;
+}
+
+.chart-toggle-group {
+  @apply flex gap-2;
+}
+
+/* ============================================
+   CHANNEL CONTROL
+   ============================================ */
+
+.channel-control-grid {
+  @apply space-y-6;
+}
+
+.channel-preset-grid {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.channel-slider {
+  @apply w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-600;
+}
+
+.channel-slider-labels {
+  @apply flex justify-between text-xs text-slate-400 mt-1;
+}
+
+.channel-status-panel {
+  @apply bg-slate-900/50 rounded-lg p-4 border border-slate-700;
+}
+
+.channel-status-info {
+  @apply text-sm text-slate-300 space-y-1;
+}
+
+.status-active {
+  @apply text-green-400;
+}
+
+/* ============================================
+   HEADER METADATA
+   ============================================ */
+
+.last-updated-text {
+  @apply text-xs text-slate-400;
+}
+
+.auto-refresh-controls {
+  @apply flex items-center gap-2 mt-1;
+}
+
+.auto-refresh-label {
+  @apply text-xs text-slate-400;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+.mobile-scroll {
+  @apply overflow-x-auto;
+}
+
+/* ============================================
+   MESSAGE & FEEDBACK
+   ============================================ */
+
+.message-success {
+  @apply text-sm text-green-400;
+}
+
+.message-error {
+  @apply text-sm text-red-400;
+}

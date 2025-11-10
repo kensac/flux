@@ -57,6 +57,21 @@ services:
           cpus: '0.5'
           memory: 128M
 
+  frontend:
+    build: ./frontend
+    restart: "no"
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - flux-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
 volumes:
   mongodb_data:
 
