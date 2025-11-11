@@ -67,24 +67,25 @@ export default function MetricsChart({ data, loading }) {
             data={chartData}
             margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis 
-              dataKey="time" 
-              stroke="#94a3b8"
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+            <XAxis
+              dataKey="time"
+              stroke="#737373"
               style={{ fontSize: '12px' }}
               domain={['dataMin', 'dataMax']}
             />
-            <YAxis 
-              stroke="#94a3b8"
+            <YAxis
+              stroke="#737373"
               style={{ fontSize: '12px' }}
               domain={[0, 'auto']}
             />
-            <Tooltip 
+            <Tooltip
               contentStyle={{
-                backgroundColor: '#1e293b',
-                border: '1px solid #475569',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e5e5',
                 borderRadius: '8px',
-                color: '#e2e8f0'
+                color: '#171717',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
               }}
             />
             <Legend 
@@ -95,22 +96,22 @@ export default function MetricsChart({ data, loading }) {
             />
             {selectedMetric === 'devices' ? (
               <>
-                <Line 
-                  type="monotone" 
-                  dataKey="activeDevices" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
+                <Line
+                  type="monotone"
+                  dataKey="activeDevices"
+                  stroke="#0284c7"
+                  strokeWidth={2.5}
                   name="Active Devices"
                   dot={false}
                   isAnimationActive={!hasAnimated}
                   animationDuration={hasAnimated ? 300 : 1000}
                   animationEasing="ease-out"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="connectedDevices" 
-                  stroke="#f59e0b" 
-                  strokeWidth={2}
+                <Line
+                  type="monotone"
+                  dataKey="connectedDevices"
+                  stroke="#16a34a"
+                  strokeWidth={2.5}
                   name="Connected Devices"
                   dot={false}
                   isAnimationActive={!hasAnimated}
@@ -120,22 +121,22 @@ export default function MetricsChart({ data, loading }) {
               </>
             ) : (
               <>
-                <Line 
-                  type="monotone" 
-                  dataKey="totalAPs" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2}
+                <Line
+                  type="monotone"
+                  dataKey="totalAPs"
+                  stroke="#0284c7"
+                  strokeWidth={2.5}
                   name="Total APs"
                   dot={false}
                   isAnimationActive={!hasAnimated}
                   animationDuration={hasAnimated ? 300 : 1000}
                   animationEasing="ease-out"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="activeAPs" 
-                  stroke="#eab308" 
-                  strokeWidth={2}
+                <Line
+                  type="monotone"
+                  dataKey="activeAPs"
+                  stroke="#d97706"
+                  strokeWidth={2.5}
                   name="Active APs"
                   dot={false}
                   isAnimationActive={!hasAnimated}

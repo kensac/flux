@@ -147,7 +147,7 @@ export default function JanitorialServices({ stats, config, historicalData, onCo
             />
           </div>
         </div>
-        <button onClick={handleUpdate} className="btn btn-primary margin-top-4" disabled={saving}>
+        <button onClick={handleUpdate} className="btn btn-primary btn-icon margin-top-4" disabled={saving}>
           <Save className="icon-sm" />
           {saving ? 'Saving...' : 'Update Cleaning Config'}
         </button>

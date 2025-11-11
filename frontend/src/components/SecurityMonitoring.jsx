@@ -120,7 +120,7 @@ export default function SecurityMonitoring({ stats, config, historicalData, onCo
             />
           </div>
         </div>
-        <button onClick={handleUpdate} className="btn btn-primary margin-top-4" disabled={saving}>
+        <button onClick={handleUpdate} className="btn btn-primary btn-icon margin-top-4" disabled={saving}>
           <Save className="icon-sm" />
           {saving ? 'Saving...' : 'Update Security Config'}
         </button>

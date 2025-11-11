@@ -1,15 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Radio, RefreshCw, Building2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Radio, RefreshCw, Building2, Download } from 'lucide-react';
 import { apiService } from './services/api';
 import StatsCard from './components/StatsCard';
 import DeviceTable from './components/DeviceTable';
 import AccessPointTable from './components/AccessPointTable';
 import MetricsChart from './components/MetricsChart';
 import ChannelHoppingControl from './components/ChannelHoppingControl';
+import NetworkInsights from './components/NetworkInsights';
+import NetworkAnalytics from './components/NetworkAnalytics';
+import TimeRangeSelector from './components/TimeRangeSelector';
+import OccupancyIntelligence from './components/OccupancyIntelligence';
+import AnomalyDetection from './components/AnomalyDetection';
+import ActivityHeatmap from './components/ActivityHeatmap';
+import BusinessIntelligence from './components/BusinessIntelligence';
+import MACFilter from './components/MACFilter';
 
 function App() {
   const [stats, setStats] = useState(null);
   const [devices, setDevices] = useState([]);
+  const [filteredDevices, setFilteredDevices] = useState([]);
   const [accessPoints, setAccessPoints] = useState([]);
   const [metricsHistory, setMetricsHistory] = useState(null);
   const [loading, setLoading] = useState({
@@ -20,6 +29,12 @@ function App() {
   });
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [timeRange, setTimeRange] = useState('1h');
+
+  // MAC filter handler
+  const handleFilterChange = useCallback((filtered) => {
+    setFilteredDevices(filtered);
+  }, []);
 
   // Fetch all data
   const fetchData = async () => {
@@ -42,12 +57,16 @@ function App() {
       setAccessPoints(apsData || []);
       setLoading(prev => ({ ...prev, accessPoints: false }));
 
-      // Fetch metrics history
+      // Fetch metrics history based on time range
       setLoading(prev => ({ ...prev, metrics: true }));
-      const metricsData = await apiService.getMetricsHistory({
-        tier: '1m',
-        limit: 60,
-      });
+      const tierMap = {
+        '1h': { tier: '1m', limit: 60 },
+        '6h': { tier: '1m', limit: 360 },
+        '24h': { tier: '1h', limit: 24 },
+        '7d': { tier: '1h', limit: 168 },
+        '30d': { tier: '1h', limit: 720 },
+      };
+      const metricsData = await apiService.getMetricsHistory(tierMap[timeRange]);
       setMetricsHistory(metricsData);
       setLoading(prev => ({ ...prev, metrics: false }));
 
@@ -66,7 +85,7 @@ function App() {
   // Initial load
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [timeRange]);
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -118,6 +137,28 @@ function App() {
                 Operations
               </a>
               <button
+                onClick={() => {
+                  const dataStr = JSON.stringify({
+                    stats,
+                    devices,
+                    accessPoints,
+                    metrics: metricsHistory,
+                    exported_at: new Date().toISOString()
+                  }, null, 2);
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(dataBlob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `network-data-${Date.now()}.json`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="btn btn-secondary btn-icon"
+              >
+                <Download className="icon-sm" />
+                Export
+              </button>
+              <button
                 onClick={fetchData}
                 className="btn btn-primary btn-icon"
               >
@@ -134,9 +175,51 @@ function App() {
         {/* Stats Cards */}
         <StatsCard stats={stats} loading={loading.stats} />
 
+        {/* Network Insights */}
+        <div className="section-spacing">
+          <NetworkInsights data={metricsHistory} stats={stats} />
+        </div>
+
+        {/* Time Range Selector */}
+        <div className="section-spacing flex items-center justify-between">
+          <TimeRangeSelector
+            selectedRange={timeRange}
+            onRangeChange={(range) => setTimeRange(range.value)}
+          />
+        </div>
+
         {/* Metrics Chart */}
         <div className="section-spacing">
           <MetricsChart data={metricsHistory} loading={loading.metrics} />
+        </div>
+
+        {/* Business Intelligence & ROI */}
+        <div className="section-spacing">
+          <BusinessIntelligence data={metricsHistory} stats={stats} />
+        </div>
+
+        {/* Occupancy Intelligence */}
+        <div className="section-spacing">
+          <OccupancyIntelligence data={metricsHistory} stats={stats} />
+        </div>
+
+        {/* Anomaly Detection */}
+        <div className="section-spacing">
+          <AnomalyDetection
+            data={metricsHistory}
+            devices={devices}
+            accessPoints={accessPoints}
+          />
+        </div>
+
+        {/* Activity Heatmap */}
+        <div className="section-spacing">
+          <ActivityHeatmap data={metricsHistory} />
+        </div>
+
+        {/* Network Analytics */}
+        <div className="section-spacing">
+          <NetworkAnalytics devices={devices} accessPoints={accessPoints} />
         </div>
 
         {/* Channel Hopping Control */}
@@ -144,9 +227,17 @@ function App() {
           <ChannelHoppingControl />
         </div>
 
+        {/* MAC Address Filter */}
+        <div className="section-spacing">
+          <MACFilter devices={devices} onFilterChange={handleFilterChange} />
+        </div>
+
         {/* Devices Table */}
         <div className="section-spacing">
-          <DeviceTable devices={devices} loading={loading.devices} />
+          <DeviceTable
+            devices={filteredDevices.length > 0 ? filteredDevices : devices}
+            loading={loading.devices}
+          />
         </div>
 
         {/* Access Points Table */}

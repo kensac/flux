@@ -25,25 +25,25 @@ export default function StatsCard({ stats, loading }) {
       label: 'Total Devices',
       value: displayStats.total_devices,
       icon: Activity,
-      color: 'text-blue-400',
+      color: 'text-primary-600',
     },
     {
       label: 'Active Devices',
       value: displayStats.active_devices,
       icon: Activity,
-      color: 'text-green-400',
+      color: 'text-success-600',
     },
     {
       label: 'Total APs',
       value: displayStats.total_aps,
       icon: Wifi,
-      color: 'text-purple-400',
+      color: 'text-primary-600',
     },
     {
       label: 'Active APs',
       value: displayStats.active_aps,
       icon: Radio,
-      color: 'text-yellow-400',
+      color: 'text-warning-600',
     },
   ];
 

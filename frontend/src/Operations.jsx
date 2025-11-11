@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Building2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Building2, RefreshCw, ArrowLeft, Download } from 'lucide-react';
 import { apiService } from './services/api';
 import OperationsStatus from './components/OperationsStatus';
+import EnergyOptimization from './components/EnergyOptimization';
+import SmartAutomation from './components/SmartAutomation';
+import FacilitiesROI from './components/FacilitiesROI';
 import HVACManagement from './components/HVACManagement';
 import LightingManagement from './components/LightingManagement';
 import JanitorialServices from './components/JanitorialServices';
@@ -101,13 +104,34 @@ export default function Operations() {
                   </button>
                 </div>
               </div>
+              <button
+                onClick={() => {
+                  const dataStr = JSON.stringify({
+                    stats,
+                    config: operationsConfig,
+                    historicalData,
+                    exported_at: new Date().toISOString()
+                  }, null, 2);
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(dataBlob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `operations-data-${Date.now()}.json`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="btn btn-secondary btn-icon"
+              >
+                <Download className="icon-sm" />
+                Export
+              </button>
               <a href="/app/" className="btn btn-secondary btn-with-icon">
                 <ArrowLeft className="icon-sm" />
                 Main Dashboard
               </a>
-              <button 
+              <button
                 onClick={handleRefresh}
-                className="btn btn-secondary btn-with-icon"
+                className="btn btn-primary btn-with-icon"
                 disabled={loading}
               >
                 <RefreshCw className={`icon-sm ${loading ? 'animate-spin' : ''}`} />
@@ -123,49 +147,64 @@ export default function Operations() {
         {/* Current Occupancy Status */}
         <OperationsStatus stats={stats} loading={loading} config={operationsConfig} />
 
-        {/* HVAC Management */}
+        {/* Facilities ROI Calculator */}
         <div className="section-spacing">
-          <HVACManagement 
-            stats={stats} 
-            config={operationsConfig?.hvac} 
-            historicalData={historicalData}
-            onConfigUpdate={fetchData} 
-          />
+          <FacilitiesROI stats={stats} historicalData={historicalData} />
         </div>
 
-        {/* Lighting Management */}
+        {/* Energy Optimization */}
         <div className="section-spacing">
-          <LightingManagement 
-            stats={stats} 
-            config={operationsConfig?.lighting} 
-            historicalData={historicalData}
-            onConfigUpdate={fetchData} 
-          />
+          <EnergyOptimization stats={stats} historicalData={historicalData} />
         </div>
 
-        {/* Janitorial Services */}
+        {/* Smart Automation */}
         <div className="section-spacing">
-          <JanitorialServices 
-            stats={stats} 
-            config={operationsConfig?.janitorial} 
-            historicalData={historicalData}
-            onConfigUpdate={fetchData} 
-          />
-        </div>
-
-        {/* Security Monitoring */}
-        <div className="section-spacing">
-          <SecurityMonitoring 
-            stats={stats} 
-            config={operationsConfig?.security} 
-            historicalData={historicalData}
-            onConfigUpdate={fetchData} 
-          />
+          <SmartAutomation stats={stats} />
         </div>
 
         {/* Total Cost Impact */}
         <div className="section-spacing">
           <TotalCostImpact historicalData={historicalData} config={operationsConfig} />
+        </div>
+
+        {/* HVAC Management */}
+        <div className="section-spacing">
+          <HVACManagement
+            stats={stats}
+            config={operationsConfig?.hvac}
+            historicalData={historicalData}
+            onConfigUpdate={fetchData}
+          />
+        </div>
+
+        {/* Lighting Management */}
+        <div className="section-spacing">
+          <LightingManagement
+            stats={stats}
+            config={operationsConfig?.lighting}
+            historicalData={historicalData}
+            onConfigUpdate={fetchData}
+          />
+        </div>
+
+        {/* Janitorial Services */}
+        <div className="section-spacing">
+          <JanitorialServices
+            stats={stats}
+            config={operationsConfig?.janitorial}
+            historicalData={historicalData}
+            onConfigUpdate={fetchData}
+          />
+        </div>
+
+        {/* Security Monitoring */}
+        <div className="section-spacing">
+          <SecurityMonitoring
+            stats={stats}
+            config={operationsConfig?.security}
+            historicalData={historicalData}
+            onConfigUpdate={fetchData}
+          />
         </div>
       </main>
 

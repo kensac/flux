@@ -133,7 +133,7 @@ export default function TotalCostImpact({ historicalData, config }) {
                 </td>
               </tr>
               <tr className="table-row-total">
-                <td className="table-cell-bold">TOTAL</td>
+                <td className="table-cell font-bold">TOTAL</td>
                 <td className="table-cell font-bold cost-baseline">${totalYearBefore.toFixed(0).toLocaleString()}</td>
                 <td className="table-cell font-bold cost-current">${totalYearAfter.toFixed(0).toLocaleString()}</td>
                 <td className="table-cell font-bold cost-savings">
