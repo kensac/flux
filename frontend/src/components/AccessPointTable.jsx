@@ -1,7 +1,16 @@
+import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Wifi } from 'lucide-react';
 
 export default function AccessPointTable({ accessPoints, loading }) {
+  const [displayAccessPoints, setDisplayAccessPoints] = useState([]);
+
+  useEffect(() => {
+    if (accessPoints && !loading) {
+      setDisplayAccessPoints(accessPoints);
+    }
+  }, [accessPoints, loading]);
+
   const getAverageRSSI = (rssiValues) => {
     if (!rssiValues || rssiValues.length === 0) return 'N/A';
     const avg = rssiValues.reduce((a, b) => a + b, 0) / rssiValues.length;
@@ -21,9 +30,7 @@ export default function AccessPointTable({ accessPoints, loading }) {
         <Wifi className="card-header-icon" />
         Access Points
       </h2>
-      {loading ? (
-        <div className="loading-state">Loading access points...</div>
-      ) : accessPoints.length === 0 ? (
+      {displayAccessPoints.length === 0 && !loading ? (
         <div className="empty-state">No access points detected</div>
       ) : (
         <div className="table-container">
@@ -40,7 +47,7 @@ export default function AccessPointTable({ accessPoints, loading }) {
               </tr>
             </thead>
             <tbody className="table-body">
-              {accessPoints.map((ap) => {
+              {displayAccessPoints.map((ap) => {
                 const avgRSSI = getAverageRSSI(ap.rssi_values);
                 const signalClass = getSignalStrengthClass(avgRSSI);
                 return (

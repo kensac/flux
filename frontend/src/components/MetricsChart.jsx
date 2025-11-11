@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { TrendingUp } from 'lucide-react';
 
 export default function MetricsChart({ data, loading }) {
   const [selectedMetric, setSelectedMetric] = useState('devices');
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const previousDataLengthRef = useRef(0);
 
   const formatChartData = () => {
     if (!data || !data.snapshots) return [];
@@ -19,10 +21,20 @@ export default function MetricsChart({ data, loading }) {
         totalAPs: snapshot.access_points.total,
         activeAPs: snapshot.access_points.active,
       }))
-      .sort((a, b) => a.timestamp - b.timestamp); // Sort oldest to newest
+      .sort((a, b) => a.timestamp - b.timestamp);
   };
 
   const chartData = formatChartData();
+
+  useEffect(() => {
+    if (chartData.length > 0 && !hasAnimated) {
+      const timer = setTimeout(() => {
+        setHasAnimated(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+    previousDataLengthRef.current = chartData.length;
+  }, [chartData.length, hasAnimated]);
 
   return (
     <div className="card">
@@ -47,22 +59,25 @@ export default function MetricsChart({ data, loading }) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="loading-state">Loading metrics...</div>
-      ) : chartData.length === 0 ? (
+      {chartData.length === 0 && !loading ? (
         <div className="empty-state">No metrics data available</div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
+          <LineChart 
+            data={chartData}
+            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis 
               dataKey="time" 
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
+              domain={['dataMin', 'dataMax']}
             />
             <YAxis 
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
+              domain={[0, 'auto']}
             />
             <Tooltip 
               contentStyle={{
@@ -87,6 +102,9 @@ export default function MetricsChart({ data, loading }) {
                   strokeWidth={2}
                   name="Active Devices"
                   dot={false}
+                  isAnimationActive={!hasAnimated}
+                  animationDuration={hasAnimated ? 300 : 1000}
+                  animationEasing="ease-out"
                 />
                 <Line 
                   type="monotone" 
@@ -95,6 +113,9 @@ export default function MetricsChart({ data, loading }) {
                   strokeWidth={2}
                   name="Connected Devices"
                   dot={false}
+                  isAnimationActive={!hasAnimated}
+                  animationDuration={hasAnimated ? 300 : 1000}
+                  animationEasing="ease-out"
                 />
               </>
             ) : (
@@ -106,6 +127,9 @@ export default function MetricsChart({ data, loading }) {
                   strokeWidth={2}
                   name="Total APs"
                   dot={false}
+                  isAnimationActive={!hasAnimated}
+                  animationDuration={hasAnimated ? 300 : 1000}
+                  animationEasing="ease-out"
                 />
                 <Line 
                   type="monotone" 
@@ -114,6 +138,9 @@ export default function MetricsChart({ data, loading }) {
                   strokeWidth={2}
                   name="Active APs"
                   dot={false}
+                  isAnimationActive={!hasAnimated}
+                  animationDuration={hasAnimated ? 300 : 1000}
+                  animationEasing="ease-out"
                 />
               </>
             )}

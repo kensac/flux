@@ -1,7 +1,16 @@
+import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Signal } from 'lucide-react';
 
 export default function DeviceTable({ devices, loading }) {
+  const [displayDevices, setDisplayDevices] = useState([]);
+
+  useEffect(() => {
+    if (devices && !loading) {
+      setDisplayDevices(devices);
+    }
+  }, [devices, loading]);
+
   const getAverageRSSI = (rssiValues) => {
     if (!rssiValues || rssiValues.length === 0) return 'N/A';
     const avg = rssiValues.reduce((a, b) => a + b, 0) / rssiValues.length;
@@ -21,9 +30,7 @@ export default function DeviceTable({ devices, loading }) {
         <Signal className="card-header-icon" />
         Active Devices
       </h2>
-      {loading ? (
-        <div className="loading-state">Loading devices...</div>
-      ) : devices.length === 0 ? (
+      {displayDevices.length === 0 && !loading ? (
         <div className="empty-state">No devices detected</div>
       ) : (
         <div className="table-container">
@@ -40,7 +47,7 @@ export default function DeviceTable({ devices, loading }) {
               </tr>
             </thead>
             <tbody className="table-body">
-              {devices.map((device) => {
+              {displayDevices.map((device) => {
                 const avgRSSI = getAverageRSSI(device.rssi_values);
                 const signalClass = getSignalStrengthClass(avgRSSI);
                 return (
