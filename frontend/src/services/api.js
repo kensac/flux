@@ -64,6 +64,53 @@ export const apiService = {
     });
     return response.data;
   },
+
+  // Operations Config
+  getOperationsConfig: async () => {
+    // Load from localStorage like operations.html does
+    const stored = localStorage.getItem('flux_ops_config');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    
+    // Return defaults if nothing in localStorage
+    return {
+      hvac: {
+        buildingCapacity: 200,
+        baselineDevices: 15,
+        minOccupancyForFull: 40,
+        fullCostPerHour: 35,
+        reducedCostPerHour: 12
+      },
+      lighting: {
+        minOccupancy: 5,
+        fullCostPerHour: 8,
+        dimmedCostPerHour: 2
+      },
+      janitorial: {
+        dailyCleaningCost: 150,
+        lowUsageThreshold: 20,
+        highUsageThreshold: 150
+      },
+      security: {
+        afterHoursStart: '22:00',
+        afterHoursEnd: '06:00',
+        alertThreshold: 10
+      }
+    };
+  },
+
+  updateOperationsConfig: async (config) => {
+    // Save to localStorage like operations.html does
+    const stored = localStorage.getItem('flux_ops_config');
+    const fullConfig = stored ? JSON.parse(stored) : {};
+    
+    // Merge the new config with existing
+    const updated = { ...fullConfig, ...config };
+    localStorage.setItem('flux_ops_config', JSON.stringify(updated));
+    
+    return updated;
+  },
 };
 
 export default api;
