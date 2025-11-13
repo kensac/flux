@@ -83,5 +83,43 @@ func initEventCollections(ctx context.Context) error {
 		}
 	}
 
+	// Historical metrics collections with tier TTLs
+	metricCollections := []struct {
+		name string
+		ttl  int32
+	}{
+		{"metrics_1m", 24 * 60 * 60},     // 24 hours
+		{"metrics_5m", 3 * 24 * 60 * 60}, // 3 days
+		{"metrics_1h", 7 * 24 * 60 * 60}, // 7 days
+	}
+
+	for _, coll := range metricCollections {
+		ttlIndex := mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "timestamp", Value: 1},
+			},
+			Options: options.Index().
+				SetExpireAfterSeconds(coll.ttl).
+				SetName("ttl_index"),
+		}
+
+		if _, err := db.Collection(coll.name).Indexes().CreateOne(ctx, ttlIndex); err != nil {
+			log.Printf("Failed to create TTL index for %s: %v", coll.name, err)
+			return err
+		}
+
+		compoundIndex := mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "tier", Value: 1},
+				{Key: "timestamp", Value: -1},
+			},
+			Options: options.Index().SetName("tier_timestamp_index"),
+		}
+
+		if _, err := db.Collection(coll.name).Indexes().CreateOne(ctx, compoundIndex); err != nil {
+			log.Printf("Failed to create compound index for %s: %v", coll.name, err)
+		}
+	}
+
 	return nil
 }

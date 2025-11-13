@@ -86,76 +86,114 @@ func aggregateMetrics(tier string, windowDuration time.Duration) error {
 		Tier:      tier,
 	}
 
+	deviceEvents := db.Collection("device_events")
+	apEvents := db.Collection("access_point_events")
+
 	// Get aggregate device stats
-	totalDevices, _ := db.Collection("devices").CountDocuments(ctx, bson.M{})
-	snapshot.Devices.Total = int(totalDevices)
+	if distinctDevices, err := deviceEvents.Distinct(ctx, "mac_address", bson.M{}); err == nil {
+		snapshot.Devices.Total = len(distinctDevices)
+	}
 
-	// Active devices (seen in the last window)
 	activeCutoff := now.Add(-windowDuration)
-	activeFilter := bson.M{"last_seen": bson.M{"$gte": activeCutoff}}
-	activeDevices, _ := db.Collection("devices").CountDocuments(ctx, activeFilter)
-	snapshot.Devices.Active = int(activeDevices)
+	activeFilter := bson.M{"timestamp": bson.M{"$gte": activeCutoff}}
 
-	// Connected devices
-	connectedFilter := bson.M{"connected": true}
-	connectedDevices, _ := db.Collection("devices").CountDocuments(ctx, connectedFilter)
-	snapshot.Devices.Connected = int(connectedDevices)
+	if activeDevices, err := deviceEvents.Distinct(ctx, "mac_address", activeFilter); err == nil {
+		snapshot.Devices.Active = len(activeDevices)
+	}
+
+	if connectedDevices, err := deviceEvents.Distinct(ctx, "mac_address", bson.M{
+		"timestamp": bson.M{"$gte": activeCutoff},
+		"connected": true,
+	}); err == nil {
+		snapshot.Devices.Connected = len(connectedDevices)
+	}
 
 	// Get aggregate AP stats
-	totalAPs, _ := db.Collection("access_points").CountDocuments(ctx, bson.M{})
-	snapshot.AccessPoints.Total = int(totalAPs)
+	if distinctAPs, err := apEvents.Distinct(ctx, "bssid", bson.M{}); err == nil {
+		snapshot.AccessPoints.Total = len(distinctAPs)
+	}
 
-	activeAPs, _ := db.Collection("access_points").CountDocuments(ctx, activeFilter)
-	snapshot.AccessPoints.Active = int(activeAPs)
+	if activeAPs, err := apEvents.Distinct(ctx, "bssid", activeFilter); err == nil {
+		snapshot.AccessPoints.Active = len(activeAPs)
+	}
 
-	// Get per-device metrics for active devices (to save space)
-	cursor, err := db.Collection("devices").Find(ctx, activeFilter)
+	// Aggregate per-device metrics from recent events
+	deviceMetricsPipeline := []bson.M{
+		{"$match": bson.M{"timestamp": bson.M{"$gte": activeCutoff}}},
+		{"$group": bson.M{
+			"_id":          "$mac_address",
+			"vendor":       bson.M{"$last": "$vendor"},
+			"connected":    bson.M{"$last": "$connected"},
+			"packet_count": bson.M{"$sum": 1},
+			"data_bytes":   bson.M{"$sum": "$data_byte_count"},
+			"rssi_values":  bson.M{"$push": "$rssi"},
+		}},
+		{"$limit": 500},
+	}
+
+	cursor, err := deviceEvents.Aggregate(ctx, deviceMetricsPipeline)
 	if err == nil {
 		defer cursor.Close(ctx)
 
-		var devices []Device
-		if err := cursor.All(ctx, &devices); err == nil {
-			for _, device := range devices {
-				metric := DeviceMetric{
-					MACAddress:  device.MACAddress,
-					PacketCount: device.PacketCount,
-					DataBytes:   device.DataBytes,
-					Connected:   device.Connected,
-					Vendor:      device.Vendor,
-				}
-
-				// Calculate RSSI statistics
-				if len(device.RSSIValues) > 0 {
-					metric.RSSIAvg, metric.RSSIMin, metric.RSSIMax = calculateRSSIStats(device.RSSIValues)
-				}
-
-				snapshot.DeviceMetrics = append(snapshot.DeviceMetrics, metric)
+		for cursor.Next(ctx) {
+			var result bson.M
+			if err := cursor.Decode(&result); err != nil {
+				continue
 			}
+
+			rssiValues := extractIntSlice(result["rssi_values"])
+			metric := DeviceMetric{
+				MACAddress:  asString(result["_id"]),
+				PacketCount: asInt(result["packet_count"]),
+				DataBytes:   asInt64(result["data_bytes"]),
+				Connected:   asBool(result["connected"]),
+				Vendor:      asString(result["vendor"]),
+			}
+
+			if len(rssiValues) > 0 {
+				metric.RSSIAvg, metric.RSSIMin, metric.RSSIMax = calculateRSSIStats(rssiValues)
+			}
+
+			snapshot.DeviceMetrics = append(snapshot.DeviceMetrics, metric)
 		}
 	}
 
-	// Get per-AP metrics for active APs
-	cursor, err = db.Collection("access_points").Find(ctx, activeFilter)
+	// Aggregate per-AP metrics from recent events
+	apMetricsPipeline := []bson.M{
+		{"$match": bson.M{"timestamp": bson.M{"$gte": activeCutoff}}},
+		{"$group": bson.M{
+			"_id":          "$bssid",
+			"ssid":         bson.M{"$last": "$ssid"},
+			"channel":      bson.M{"$last": "$channel"},
+			"beacon_count": bson.M{"$sum": 1},
+			"rssi_values":  bson.M{"$push": "$rssi"},
+		}},
+		{"$limit": 500},
+	}
+
+	cursor, err = apEvents.Aggregate(ctx, apMetricsPipeline)
 	if err == nil {
 		defer cursor.Close(ctx)
 
-		var aps []AccessPoint
-		if err := cursor.All(ctx, &aps); err == nil {
-			for _, ap := range aps {
-				metric := APMetric{
-					BSSID:       ap.BSSID,
-					SSID:        ap.SSID,
-					BeaconCount: ap.BeaconCount,
-					Channel:     ap.Channel,
-				}
-
-				// Calculate RSSI statistics
-				if len(ap.RSSIValues) > 0 {
-					metric.RSSIAvg, metric.RSSIMin, metric.RSSIMax = calculateRSSIStats(ap.RSSIValues)
-				}
-
-				snapshot.APMetrics = append(snapshot.APMetrics, metric)
+		for cursor.Next(ctx) {
+			var result bson.M
+			if err := cursor.Decode(&result); err != nil {
+				continue
 			}
+
+			rssiValues := extractIntSlice(result["rssi_values"])
+			metric := APMetric{
+				BSSID:       asString(result["_id"]),
+				SSID:        asString(result["ssid"]),
+				Channel:     asInt(result["channel"]),
+				BeaconCount: asInt(result["beacon_count"]),
+			}
+
+			if len(rssiValues) > 0 {
+				metric.RSSIAvg, metric.RSSIMin, metric.RSSIMax = calculateRSSIStats(rssiValues)
+			}
+
+			snapshot.APMetrics = append(snapshot.APMetrics, metric)
 		}
 	}
 
@@ -171,4 +209,63 @@ func aggregateMetrics(tier string, windowDuration time.Duration) error {
 		snapshot.Devices.Active, snapshot.AccessPoints.Active)
 
 	return nil
+}
+
+func asString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	if str, ok := value.(string); ok {
+		return str
+	}
+	return ""
+}
+
+func asInt(value interface{}) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int32:
+		return int(v)
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
+func asInt64(value interface{}) int64 {
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int32:
+		return int64(v)
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	default:
+		return 0
+	}
+}
+
+func asBool(value interface{}) bool {
+	if b, ok := value.(bool); ok {
+		return b
+	}
+	return false
+}
+
+func extractIntSlice(value interface{}) []int {
+	raw, ok := value.([]interface{})
+	if !ok {
+		return nil
+	}
+	result := make([]int, 0, len(raw))
+	for _, item := range raw {
+		result = append(result, asInt(item))
+	}
+	return result
 }

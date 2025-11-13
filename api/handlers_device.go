@@ -22,16 +22,16 @@ func getDevices(c *gin.Context) {
 		// Group by MAC address
 		{
 			"$group": bson.M{
-				"_id":         "$mac_address",
-				"first_seen":  bson.M{"$min": "$timestamp"},
-				"last_seen":   bson.M{"$max": "$timestamp"},
-				"rssi_values": bson.M{"$push": "$rssi"},
-				"probe_ssids": bson.M{"$addToSet": "$probe_ssid"},
-				"vendor":      bson.M{"$last": "$vendor"},
+				"_id":          "$mac_address",
+				"first_seen":   bson.M{"$min": "$timestamp"},
+				"last_seen":    bson.M{"$max": "$timestamp"},
+				"rssi_values":  bson.M{"$push": "$rssi"},
+				"probe_ssids":  bson.M{"$addToSet": "$probe_ssid"},
+				"vendor":       bson.M{"$last": "$vendor"},
 				"packet_count": bson.M{"$sum": 1},
 				"data_frames":  bson.M{"$sum": "$data_frame_count"},
 				"data_bytes":   bson.M{"$sum": "$data_byte_count"},
-				"events":       bson.M{"$push": bson.M{
+				"events": bson.M{"$push": bson.M{
 					"event_type": "$event_type",
 					"timestamp":  "$timestamp",
 					"connected":  "$connected",
@@ -64,10 +64,13 @@ func getDevices(c *gin.Context) {
 	// Transform aggregation results into Device struct
 	devices := make([]Device, 0, len(results))
 	for _, result := range results {
+		firstSeen, _ := bsonToTime(result["first_seen"])
+		lastSeen, _ := bsonToTime(result["last_seen"])
+
 		device := Device{
 			MACAddress:  result["_id"].(string),
-			FirstSeen:   result["first_seen"].(time.Time),
-			LastSeen:    result["last_seen"].(time.Time),
+			FirstSeen:   firstSeen,
+			LastSeen:    lastSeen,
 			PacketCount: int(result["packet_count"].(int32)),
 			DataFrames:  int(result["data_frames"].(int32)),
 			DataBytes:   result["data_bytes"].(int64),
@@ -107,11 +110,15 @@ func getDevices(c *gin.Context) {
 					eventType := event["event_type"].(string)
 					if eventType == "connection" {
 						device.Connected = true
-						device.LastConnected = event["timestamp"].(time.Time)
+						if ts, ok := bsonToTime(event["timestamp"]); ok {
+							device.LastConnected = ts
+						}
 						break
 					} else if eventType == "disconnection" {
 						device.Connected = false
-						device.LastDisconnected = event["timestamp"].(time.Time)
+						if ts, ok := bsonToTime(event["timestamp"]); ok {
+							device.LastDisconnected = ts
+						}
 						break
 					}
 				}
@@ -173,9 +180,11 @@ func getActiveDevices(c *gin.Context) {
 	// Transform to Device structs
 	devices := make([]Device, 0, len(results))
 	for _, result := range results {
+		lastSeen, _ := bsonToTime(result["last_seen"])
+
 		device := Device{
 			MACAddress:  result["_id"].(string),
-			LastSeen:    result["last_seen"].(time.Time),
+			LastSeen:    lastSeen,
 			PacketCount: int(result["packet_count"].(int32)),
 		}
 		if vendor, ok := result["vendor"].(string); ok {

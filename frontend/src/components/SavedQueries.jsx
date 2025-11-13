@@ -1,9 +1,121 @@
 import { useState, useEffect } from 'react';
-import { BookmarkIcon, Play, Trash2, Star, Clock, TrendingUp } from 'lucide-react';
+import { BookmarkIcon, Play, Trash2, Star, Clock, TrendingUp, Download } from 'lucide-react';
+import { format } from 'date-fns';
+import { apiService } from '../services/api';
 
-export default function SavedQueries({ onQuerySelect, onResultsChange }) {
+export default function SavedQueries({ onResultsChange }) {
   const [savedQueries, setSavedQueries] = useState([]);
   const [selectedQuery, setSelectedQuery] = useState(null);
+  const [queryResults, setQueryResults] = useState(null);
+  const [runningQuery, setRunningQuery] = useState(false);
+  const [queryError, setQueryError] = useState(null);
+
+  const timeRangeMap = {
+    '5m': 5,
+    '15m': 15,
+    '1h': 60,
+    '6h': 360,
+    '24h': 1440,
+    '7d': 10080,
+    '30d': 43200,
+    'all': undefined,
+  };
+
+  const getFilterType = (filter) => filter.type || (typeof filter.value === 'number' ? 'number' : 'text');
+
+  const normalizeBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (value === undefined || value === null) return false;
+    return String(value).toLowerCase() === 'true';
+  };
+
+  const normalizeNumber = (value) => {
+    if (value === undefined || value === null || value === '') return 0;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const normalizeString = (value) => {
+    if (value === undefined || value === null) return '';
+    return String(value);
+  };
+
+  const evaluateFilter = (item, filter) => {
+    const value = item[filter.field];
+    const filterType = getFilterType(filter);
+    const filterValue = filter.value;
+
+    switch (filter.operator) {
+      case 'equals':
+        if (filterType === 'boolean') {
+          return normalizeBoolean(value) === normalizeBoolean(filterValue);
+        }
+        if (filterType === 'number') {
+          return normalizeNumber(value) === Number(filterValue);
+        }
+        return normalizeString(value).toLowerCase() === normalizeString(filterValue).toLowerCase();
+      case 'contains':
+        return normalizeString(value).toLowerCase().includes(normalizeString(filterValue).toLowerCase());
+      case 'starts_with':
+        return normalizeString(value).toLowerCase().startsWith(normalizeString(filterValue).toLowerCase());
+      case 'ends_with':
+        return normalizeString(value).toLowerCase().endsWith(normalizeString(filterValue).toLowerCase());
+      case 'greater_than':
+        return normalizeNumber(value) > Number(filterValue);
+      case 'less_than':
+        return normalizeNumber(value) < Number(filterValue);
+      default:
+        return true;
+    }
+  };
+
+  const applyFilters = (items, filters = []) => {
+    if (!filters || filters.length === 0) {
+      return items;
+    }
+    return items.filter(item => filters.every(filter => evaluateFilter(item, filter)));
+  };
+
+  const calculateAvgRSSI = (values) => {
+    if (!values || values.length === 0) return 'N/A';
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return `${avg.toFixed(1)} dBm`;
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) {
+      return 'N/A';
+    }
+    try {
+      return format(new Date(timestamp), 'MMM d, HH:mm:ss');
+    } catch {
+      return String(timestamp);
+    }
+  };
+
+  const fetchDatasetForQuery = async (query, targetType) => {
+    const minutes = query.timeRange ? timeRangeMap[query.timeRange] : 60;
+    const limit = query.limit || 100;
+
+    if (targetType === 'aps') {
+      return apiService.getAccessPoints(limit);
+    }
+
+    return minutes
+      ? apiService.getActiveDevices(minutes)
+      : apiService.getDevices(limit);
+  };
+
+  const exportResults = () => {
+    if (!queryResults?.rows) return;
+    const blob = new Blob([JSON.stringify(queryResults.rows, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${queryResults.name.toLowerCase().replace(/\s+/g, '-')}-results.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Pre-built queries that are always available
   const prebuiltQueries = [
@@ -307,10 +419,40 @@ export default function SavedQueries({ onQuerySelect, onResultsChange }) {
     }
   }, []);
 
-  const runQuery = (query) => {
-    setSelectedQuery(query.id);
-    // Actually execute the query by passing it to the parent
-    onQuerySelect(query.query);
+  const runQuery = async (queryDefinition) => {
+    setSelectedQuery(queryDefinition.id);
+    setRunningQuery(true);
+    setQueryError(null);
+
+    try {
+      const targetType = queryDefinition.targetType === 'aps' ? 'aps' : 'devices';
+      const dataset = await fetchDatasetForQuery(queryDefinition.query, targetType);
+      const filtered = applyFilters(dataset || [], queryDefinition.query.filters);
+      const payload = {
+        id: queryDefinition.id,
+        name: queryDefinition.name,
+        description: queryDefinition.description,
+        targetType,
+        rows: filtered,
+        params: queryDefinition.query,
+        stats: {
+          total: filtered.length,
+          limit: queryDefinition.query.limit || 100,
+          timeRange: queryDefinition.query.timeRange || '1h',
+          executedAt: new Date().toISOString(),
+        },
+      };
+
+      setQueryResults(payload);
+      if (onResultsChange) {
+        onResultsChange(payload);
+      }
+    } catch (error) {
+      console.error('Saved query execution failed:', error);
+      setQueryError(error.message || 'Unable to run query');
+    } finally {
+      setRunningQuery(false);
+    }
   };
 
   const deleteQuery = (queryId) => {
@@ -461,6 +603,147 @@ export default function SavedQueries({ onQuerySelect, onResultsChange }) {
       {selectedCategory !== 'all' && filteredQueries.length === 0 && (
         <div className="empty-state">
           No queries found in this category
+        </div>
+      )}
+
+      {/* Results Pane */}
+      {(queryResults || runningQuery || queryError) && (
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Query Results</p>
+              <h4 className="text-lg font-semibold text-gray-900">
+                {queryResults ? queryResults.name : 'Pending query'}
+              </h4>
+              {queryResults && (
+                <p className="text-sm text-gray-500">
+                  Last run {formatTimestamp(queryResults.stats.executedAt)} ·{' '}
+                  {queryResults.targetType === 'aps' ? 'Access Points' : 'Devices'}
+                </p>
+              )}
+            </div>
+            {queryResults?.rows?.length > 0 && (
+              <button
+                onClick={exportResults}
+                className="btn btn-secondary btn-with-icon"
+              >
+                <Download className="icon-sm" />
+                Export JSON
+              </button>
+            )}
+          </div>
+
+          {runningQuery && (
+            <div className="loading-state">Running query...</div>
+          )}
+
+          {queryError && !runningQuery && (
+            <div className="error-state">{queryError}</div>
+          )}
+
+          {queryResults && !runningQuery && !queryError && (
+            <div className="card p-0 overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-b border-gray-100">
+                <div className="p-4 border-r border-gray-100">
+                  <p className="text-xs text-gray-500">Total Results</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {queryResults.stats.total.toLocaleString()}
+                  </p>
+                </div>
+                <div className="p-4 border-r border-gray-100">
+                  <p className="text-xs text-gray-500">Time Range</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {queryResults.stats.timeRange.toUpperCase()}
+                  </p>
+                </div>
+                <div className="p-4">
+                  <p className="text-xs text-gray-500">Limit Applied</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {queryResults.stats.limit}
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-auto">
+                {queryResults.targetType === 'aps'
+                  ? (
+                    <table className="table">
+                      <thead className="table-head">
+                        <tr>
+                          <th className="table-header-cell">BSSID</th>
+                          <th className="table-header-cell">SSID</th>
+                          <th className="table-header-cell">Channel</th>
+                          <th className="table-header-cell">Encryption</th>
+                          <th className="table-header-cell">Avg RSSI</th>
+                          <th className="table-header-cell">Beacon Count</th>
+                          <th className="table-header-cell">Last Seen</th>
+                        </tr>
+                      </thead>
+                      <tbody className="table-body">
+                        {queryResults.rows.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="text-center py-8 text-gray-500">
+                              No access points matched this query
+                            </td>
+                          </tr>
+                        ) : (
+                          queryResults.rows.map((ap) => (
+                            <tr key={ap.bssid} className="table-row">
+                              <td className="table-cell-mono">{ap.bssid}</td>
+                              <td className="table-cell">{ap.ssid || 'Unknown'}</td>
+                              <td className="table-cell">{ap.channel || 'N/A'}</td>
+                              <td className="table-cell">{ap.encryption || 'Unknown'}</td>
+                              <td className="table-cell">{calculateAvgRSSI(ap.rssi_values)}</td>
+                              <td className="table-cell">{ap.beacon_count?.toLocaleString() || 0}</td>
+                              <td className="table-cell">{formatTimestamp(ap.last_seen)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="table">
+                      <thead className="table-head">
+                        <tr>
+                          <th className="table-header-cell">MAC Address</th>
+                          <th className="table-header-cell">Vendor</th>
+                          <th className="table-header-cell">Status</th>
+                          <th className="table-header-cell">Avg RSSI</th>
+                          <th className="table-header-cell">Packets</th>
+                          <th className="table-header-cell">Data (Bytes)</th>
+                          <th className="table-header-cell">Last Seen</th>
+                        </tr>
+                      </thead>
+                      <tbody className="table-body">
+                        {queryResults.rows.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="text-center py-8 text-gray-500">
+                              No devices matched this query
+                            </td>
+                          </tr>
+                        ) : (
+                          queryResults.rows.map((device) => (
+                            <tr key={device.mac_address} className="table-row">
+                              <td className="table-cell-mono">{device.mac_address}</td>
+                              <td className="table-cell">{device.vendor || 'Unknown'}</td>
+                              <td className="table-cell">
+                                <span className={device.connected ? 'badge-connected' : 'badge-probe'}>
+                                  {device.connected ? 'Connected' : 'Probing'}
+                                </span>
+                              </td>
+                              <td className="table-cell">{calculateAvgRSSI(device.rssi_values)}</td>
+                              <td className="table-cell">{device.packet_count?.toLocaleString() || 0}</td>
+                              <td className="table-cell">{device.data_bytes?.toLocaleString() || 0}</td>
+                              <td className="table-cell">{formatTimestamp(device.last_seen)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

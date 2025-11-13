@@ -29,6 +29,7 @@ function DataPlatform() {
   const [activeView, setActiveView] = useState('explorer');
   const [stats, setStats] = useState(null);
   const [currentQuery, setCurrentQuery] = useState(null);
+  const [viewResults, setViewResults] = useState({});
 
   // Fetch stats
   const fetchStats = async () => {
@@ -93,11 +94,15 @@ function DataPlatform() {
   ];
 
   // Handle query execution from child components
-  const handleQueryExecute = (query, targetView = null) => {
+  const handleQueryExecute = (query) => {
     setCurrentQuery(query);
-    if (targetView) {
-      setActiveView(targetView);
-    }
+  };
+
+  const handleResultsUpdate = (viewId, data) => {
+    setViewResults((prev) => ({
+      ...prev,
+      [viewId]: data,
+    }));
   };
 
   // Render the active view's content
@@ -136,7 +141,7 @@ function DataPlatform() {
 
             <div className="flex-1 overflow-auto">
               <SavedQueries
-                onQuerySelect={(query) => handleQueryExecute(query, 'explorer')}
+                onResultsChange={(results) => handleResultsUpdate('saved-queries', results)}
               />
             </div>
           </div>
@@ -318,6 +323,12 @@ function DataPlatform() {
             {stats && (
               <div className="text-sm text-gray-600">
                 {stats.total_devices.toLocaleString()} total devices · {stats.active_devices.toLocaleString()} active · {stats.total_aps.toLocaleString()} access points
+              </div>
+            )}
+            {viewResults['saved-queries'] && (
+              <div className="text-xs text-gray-500 mt-1">
+                Last saved query: {viewResults['saved-queries'].name}{' '}
+                ({viewResults['saved-queries'].stats?.total?.toLocaleString() || 0} results)
               </div>
             )}
           </div>

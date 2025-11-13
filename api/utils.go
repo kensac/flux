@@ -3,6 +3,9 @@ package main
 import (
 	"os"
 	"strconv"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // parseLimit parses a limit query parameter with a default value
@@ -51,4 +54,18 @@ func calculateRSSIStats(values []int) (avg float64, min int, max int) {
 
 	avg = float64(sum) / float64(len(values))
 	return
+}
+
+// bsonToTime safely converts MongoDB temporal primitives into time.Time
+func bsonToTime(value interface{}) (time.Time, bool) {
+	switch v := value.(type) {
+	case time.Time:
+		return v, true
+	case primitive.DateTime:
+		return v.Time(), true
+	case primitive.Timestamp:
+		return time.Unix(int64(v.T), 0), true
+	default:
+		return time.Time{}, false
+	}
 }

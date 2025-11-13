@@ -151,17 +151,19 @@ func executeQuery(c *gin.Context) {
 
 	// Validate collection name (whitelist approach)
 	allowedCollections := map[string]bool{
-		"devices":        true,
-		"access_points":  true,
-		"metrics_1m":     true,
-		"metrics_5m":     true,
-		"metrics_1h":     true,
-		"channel_config": true,
+		"device_events":       true,
+		"access_point_events": true,
+		"devices":             true,
+		"access_points":       true,
+		"metrics_1m":          true,
+		"metrics_5m":          true,
+		"metrics_1h":          true,
+		"channel_config":      true,
 	}
 
 	if !allowedCollections[req.Collection] {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("collection '%s' is not allowed. Allowed: devices, access_points, metrics_*", req.Collection),
+			"error": fmt.Sprintf("collection '%s' is not allowed. Allowed: device_events, access_point_events, devices, access_points, metrics_*", req.Collection),
 		})
 		return
 	}

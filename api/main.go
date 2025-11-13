@@ -1,31 +1,31 @@
 // Package main Flux WiFi Sniffer API
 //
-// WiFi presence detection and occupancy analytics API
+// # WiFi presence detection and occupancy analytics API
 //
 // Terms Of Service:
 //
 // There are no TOS at this moment, use at your own risk
 //
-//     Schemes: http, https
-//     Host: localhost:8080
-//     BasePath: /
-//     Version: 1.0.0
-//     Contact: Flux Team
+//	Schemes: http, https
+//	Host: localhost:8080
+//	BasePath: /
+//	Version: 1.0.0
+//	Contact: Flux Team
 //
-//     Consumes:
-//     - application/json
+//	Consumes:
+//	- application/json
 //
-//     Produces:
-//     - application/json
+//	Produces:
+//	- application/json
 //
-//     Security:
-//     - api_key:
+//	Security:
+//	- api_key:
 //
-//     SecurityDefinitions:
-//     api_key:
-//          type: apiKey
-//          name: Authorization
-//          in: header
+//	SecurityDefinitions:
+//	api_key:
+//	     type: apiKey
+//	     name: Authorization
+//	     in: header
 //
 // swagger:meta
 package main
@@ -66,6 +66,9 @@ func main() {
 	if err := loadChannelConfig(); err != nil {
 		log.Printf("Warning: Failed to load channel config: %v", err)
 	}
+
+	// Start background aggregation services
+	go startAggregationWorkers()
 
 	// Setup Gin router
 	r := gin.Default()
