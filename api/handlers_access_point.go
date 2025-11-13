@@ -13,12 +13,18 @@ import (
 // getAccessPoints aggregates AP data from events on demand
 func getAccessPoints(c *gin.Context) {
 	limit := parseLimit(c.Query("limit"), 100)
+	// Allow filtering by time window (default: last 7 days to reduce scan size)
+	days := parseLimit(c.Query("days"), 7)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Filter to recent data first to avoid full collection scan
+	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+
 	// Aggregate AP data from events
 	pipeline := []bson.M{
+		{"$match": bson.M{"timestamp": bson.M{"$gte": cutoff}}},
 		{
 			"$group": bson.M{
 				"_id":          "$bssid",
