@@ -8,13 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // getAccessPoints aggregates AP data from events on demand
 func getAccessPoints(c *gin.Context) {
 	limit := parseLimit(c.Query("limit"), 100)
-	// Allow filtering by time window (default: last 24 hours for faster queries)
-	hours := parseLimit(c.Query("hours"), 24)
+	// Allow filtering by time window (default: last 1 hour for RPi performance)
+	hours := parseLimit(c.Query("hours"), 1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -22,13 +23,12 @@ func getAccessPoints(c *gin.Context) {
 	// Filter to recent data first to avoid full collection scan
 	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour)
 
-	// Aggregate AP data from events - optimized to reduce memory usage
+	// OPTIMIZED for Raspberry Pi: Avoid $push which collects all RSSI values in memory
+	// Instead, collect just summary statistics
 	pipeline := []bson.M{
 		// Filter first - use indexed timestamp field
 		{"$match": bson.M{"timestamp": bson.M{"$gte": cutoff}}},
-		// Sort before grouping to get latest records first
-		{"$sort": bson.M{"timestamp": -1}},
-		// Group by BSSID
+		// Group by BSSID - collect only summary data, not full arrays
 		{
 			"$group": bson.M{
 				"_id":          "$bssid",
@@ -37,7 +37,9 @@ func getAccessPoints(c *gin.Context) {
 				"ssid":         bson.M{"$last": "$ssid"},
 				"channel":      bson.M{"$last": "$channel"},
 				"encryption":   bson.M{"$last": "$encryption"},
-				"rssi_values":  bson.M{"$push": "$rssi"},
+				"avg_rssi":     bson.M{"$avg": "$rssi"},    // Average RSSI instead of all values
+				"min_rssi":     bson.M{"$min": "$rssi"},    // Min RSSI
+				"max_rssi":     bson.M{"$max": "$rssi"},    // Max RSSI
 				"beacon_count": bson.M{"$sum": 1},
 			},
 		},
@@ -47,7 +49,9 @@ func getAccessPoints(c *gin.Context) {
 		{"$limit": int64(limit)},
 	}
 
-	cursor, err := db.Collection("access_point_events").Aggregate(ctx, pipeline)
+	// Add hint to use the timestamp index for better performance on RPi
+	opts := options.Aggregate().SetHint(bson.D{{Key: "timestamp", Value: 1}})
+	cursor, err := db.Collection("access_point_events").Aggregate(ctx, pipeline, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -78,17 +82,16 @@ func getAccessPoints(c *gin.Context) {
 		if encryption, ok := result["encryption"].(string); ok {
 			ap.Encryption = encryption
 		}
-		if rssiVals, ok := result["rssi_values"].([]interface{}); ok {
-			start := 0
-			if len(rssiVals) > 100 {
-				start = len(rssiVals) - 100
-			}
-			for _, val := range rssiVals[start:] {
-				if rssi, ok := val.(int32); ok {
-					ap.RSSIValues = append(ap.RSSIValues, int(rssi))
-				}
-			}
+
+		// Create synthetic RSSI values from statistics for backward compatibility
+		// This uses far less memory than storing thousands of actual values
+		avgRSSI := toInt(result["avg_rssi"])
+		minRSSI := toInt(result["min_rssi"])
+		maxRSSI := toInt(result["max_rssi"])
+		if avgRSSI != 0 {
+			ap.RSSIValues = []int{minRSSI, avgRSSI, maxRSSI}
 		}
+
 		aps = append(aps, ap)
 	}
 
