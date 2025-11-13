@@ -69,3 +69,35 @@ func bsonToTime(value interface{}) (time.Time, bool) {
 		return time.Time{}, false
 	}
 }
+
+// toInt safely converts numeric BSON types to int
+func toInt(value interface{}) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int32:
+		return int(v)
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return 0
+	}
+}
+
+// toInt64 safely converts numeric BSON types to int64
+func toInt64(value interface{}) int64 {
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int32:
+		return int64(v)
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	default:
+		return 0
+	}
+}

@@ -57,7 +57,7 @@ func getAccessPoints(c *gin.Context) {
 			BSSID:       result["_id"].(string),
 			FirstSeen:   firstSeen,
 			LastSeen:    lastSeen,
-			BeaconCount: int(result["beacon_count"].(int32)),
+			BeaconCount: toInt(result["beacon_count"]),
 		}
 		if ssid, ok := result["ssid"].(string); ok {
 			ap.SSID = ssid
@@ -129,7 +129,7 @@ func getActiveAccessPoints(c *gin.Context) {
 		ap := AccessPoint{
 			BSSID:       result["_id"].(string),
 			LastSeen:    lastSeen,
-			BeaconCount: int(result["beacon_count"].(int32)),
+			BeaconCount: toInt(result["beacon_count"]),
 		}
 		if ssid, ok := result["ssid"].(string); ok {
 			ap.SSID = ssid

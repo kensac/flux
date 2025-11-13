@@ -71,9 +71,9 @@ func getDevices(c *gin.Context) {
 			MACAddress:  result["_id"].(string),
 			FirstSeen:   firstSeen,
 			LastSeen:    lastSeen,
-			PacketCount: int(result["packet_count"].(int32)),
-			DataFrames:  int(result["data_frames"].(int32)),
-			DataBytes:   result["data_bytes"].(int64),
+			PacketCount: toInt(result["packet_count"]),
+			DataFrames:  toInt(result["data_frames"]),
+			DataBytes:   toInt64(result["data_bytes"]),
 		}
 
 		// Extract vendor
@@ -185,7 +185,7 @@ func getActiveDevices(c *gin.Context) {
 		device := Device{
 			MACAddress:  result["_id"].(string),
 			LastSeen:    lastSeen,
-			PacketCount: int(result["packet_count"].(int32)),
+			PacketCount: toInt(result["packet_count"]),
 		}
 		if vendor, ok := result["vendor"].(string); ok {
 			device.Vendor = vendor

@@ -223,7 +223,7 @@ function DataPlatform() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <div
         className={`bg-white border-r border-gray-200 transition-all duration-300 flex flex-col ${
