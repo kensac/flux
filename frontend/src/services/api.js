@@ -37,6 +37,11 @@ export const apiService = {
     return response.data;
   },
 
+  getActiveAccessPoints: async (minutes = 5) => {
+    const response = await api.get('/access-points/active', { params: { minutes } });
+    return response.data;
+  },
+
   // Channel Hopping Config
   getChannelConfig: async () => {
     const response = await api.get('/config/channel-hopping');

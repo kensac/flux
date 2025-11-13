@@ -4,27 +4,43 @@ import QueryResults from './QueryResults';
 
 export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
   const [query, setQuery] = useState('');
-  const [collection, setCollection] = useState('devices');
+  const [collection, setCollection] = useState('device_events');
+  const [limit, setLimit] = useState(100);
+  const [skip, setSkip] = useState(0);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
 
+  const collectionOptions = [
+    { value: 'device_events', label: 'device_events (raw devices)' },
+    { value: 'access_point_events', label: 'access_point_events (raw APs)' },
+    { value: 'metrics_1m', label: 'metrics_1m (1-minute snapshots)' },
+    { value: 'metrics_5m', label: 'metrics_5m (5-minute snapshots)' },
+    { value: 'metrics_1h', label: 'metrics_1h (1-hour snapshots)' },
+    { value: 'channel_config', label: 'channel_config' },
+  ];
+
   // Sample queries for quick start
   const sampleQueries = {
-    devices: {
-      'Find all connected devices': `{ "connected": true }`,
-      'Devices with strong signal': `{ "rssi_values": { "$elemMatch": { "$gte": -50 } } }`,
-      'Apple devices only': `{ "vendor": { "$regex": "Apple", "$options": "i" } }`,
-      'High packet count': `{ "packet_count": { "$gt": 1000 } }`,
-      'Devices from last hour': `{ "last_seen": { "$gte": new Date(Date.now() - 3600000) } }`,
+    device_events: {
+      'Connected devices (last 5m)': `{ "connected": true, "timestamp": { "$gte": new Date(Date.now() - 300000) } }`,
+      'RSSI stronger than -50 dBm': `{ "rssi": { "$gt": -50 } }`,
+      'Probe requests for "Guest"': `{ "event_type": "probe", "probe_ssid": { "$regex": "Guest", "$options": "i" } }`,
+      'High traffic devices': `{ "data_byte_count": { "$gt": 1048576 } }`,
+      'Specific MAC address': `{ "mac_address": "AA:BB:CC:DD:EE:FF" }`,
     },
-    accessPoints: {
+    access_point_events: {
       'Open networks': `{ "encryption": "Open" }`,
-      'Channel 6 networks': `{ "channel": 6 }`,
-      'Strong signal APs': `{ "rssi_values": { "$elemMatch": { "$gte": -40 } } }`,
+      'Channel 11 APs': `{ "channel": 11 }`,
+      'Strong AP beacons': `{ "rssi": { "$gt": -45 } }`,
       'Hidden SSIDs': `{ "ssid": { "$in": ["", null] } }`,
-    }
+    },
+    metrics_1m: {
+      'Recent snapshots': `{ "timestamp": { "$gte": new Date(Date.now() - 3600000) } }`,
+      'High active devices': `{ "devices.active": { "$gt": 50 } }`,
+      'Low activity periods': `{ "devices.active": { "$lt": 5 } }`,
+    },
   };
 
   // MongoDB operators reference
@@ -95,6 +111,8 @@ export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
         body: JSON.stringify({
           collection,
           filter: query,
+          limit,
+          skip,
         }),
       });
 
@@ -185,9 +203,9 @@ export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
           onChange={(e) => setCollection(e.target.value)}
           className="input"
         >
-          <option value="devices">devices</option>
-          <option value="access_points">access_points</option>
-          <option value="metrics">metrics</option>
+          {collectionOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
       </div>
 
@@ -208,22 +226,45 @@ export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
         </p>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        <button
-          onClick={executeQuery}
-          disabled={executing || !query.trim()}
-          className="btn btn-primary btn-icon"
-        >
-          <Play className="icon-sm" />
-          {executing ? 'Executing...' : 'Execute Query'}
-        </button>
-        <button
-          onClick={() => setQuery('')}
-          className="btn btn-secondary"
-        >
-          Clear
-        </button>
+      {/* Action & Pagination */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="form-label">Limit</label>
+          <input
+            type="number"
+            min="1"
+            max="1000"
+            value={limit}
+            onChange={(e) => setLimit(Math.min(1000, Math.max(1, Number(e.target.value))))}
+            className="input"
+          />
+        </div>
+        <div>
+          <label className="form-label">Skip</label>
+          <input
+            type="number"
+            min="0"
+            value={skip}
+            onChange={(e) => setSkip(Math.max(0, Number(e.target.value)))}
+            className="input"
+          />
+        </div>
+        <div className="flex items-end gap-2">
+          <button
+            onClick={executeQuery}
+            disabled={executing || !query.trim()}
+            className="btn btn-primary btn-icon flex-1"
+          >
+            <Play className="icon-sm" />
+            {executing ? 'Executing...' : 'Execute Query'}
+          </button>
+          <button
+            onClick={() => setQuery('')}
+            className="btn btn-secondary"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       {/* Sample Queries */}
@@ -240,6 +281,9 @@ export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
               <p className="text-xs text-gray-600 font-mono mt-1">{sampleQuery}</p>
             </button>
           ))}
+          {(sampleQueries[collection] == null || Object.keys(sampleQueries[collection]).length === 0) && (
+            <p className="text-xs text-gray-500">No sample queries available for this collection.</p>
+          )}
         </div>
       </div>
 
@@ -298,31 +342,32 @@ export default function MongoQueryEditor({ onQueryExecute, onResultsChange }) {
       <div>
         <h4 className="text-sm font-semibold text-gray-700 mb-3">Available Fields</h4>
         <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-          {collection === 'devices' && (
+          {collection === 'device_events' && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              <code className="text-gray-700">mac_address</code>
-              <code className="text-gray-700">vendor</code>
-              <code className="text-gray-700">connected (bool)</code>
-              <code className="text-gray-700">first_seen (date)</code>
-              <code className="text-gray-700">last_seen (date)</code>
-              <code className="text-gray-700">last_connected (date)</code>
-              <code className="text-gray-700">rssi_values (array)</code>
-              <code className="text-gray-700">probe_ssids (array)</code>
-              <code className="text-gray-700">packet_count (int)</code>
-              <code className="text-gray-700">data_frames (int)</code>
-              <code className="text-gray-700">data_bytes (int)</code>
+              {['timestamp', 'mac_address', 'event_type', 'rssi', 'probe_ssid', 'vendor', 'connected', 'bssid', 'data_frame_count', 'data_byte_count'].map(field => (
+                <code key={field} className="text-gray-700">{field}</code>
+              ))}
             </div>
           )}
-          {collection === 'access_points' && (
+          {collection === 'access_point_events' && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              <code className="text-gray-700">bssid</code>
-              <code className="text-gray-700">ssid</code>
-              <code className="text-gray-700">channel (int)</code>
-              <code className="text-gray-700">encryption</code>
-              <code className="text-gray-700">first_seen (date)</code>
-              <code className="text-gray-700">last_seen (date)</code>
-              <code className="text-gray-700">rssi_values (array)</code>
-              <code className="text-gray-700">beacon_count (int)</code>
+              {['timestamp', 'bssid', 'ssid', 'channel', 'rssi', 'encryption', 'event_type'].map(field => (
+                <code key={field} className="text-gray-700">{field}</code>
+              ))}
+            </div>
+          )}
+          {collection?.startsWith('metrics_') && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              {['timestamp', 'devices.total', 'devices.active', 'devices.connected', 'access_points.total', 'access_points.active', 'device_metrics', 'ap_metrics'].map(field => (
+                <code key={field} className="text-gray-700">{field}</code>
+              ))}
+            </div>
+          )}
+          {collection === 'channel_config' && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              {['enabled', 'timeout_ms', 'channels', 'last_updated'].map(field => (
+                <code key={field} className="text-gray-700">{field}</code>
+              ))}
             </div>
           )}
         </div>

@@ -15,17 +15,23 @@ export default function ProximityHeatmap() {
     showLabels: true,
     showGrid: true,
   });
+  const hasActivity = (devices?.length || 0) > 0 || (accessPoints?.length || 0) > 0;
 
   // Fetch real-time data
   const fetchData = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
-      const [devicesData, apsData] = await Promise.all([
+      const [devicesData, activeAps] = await Promise.all([
         apiService.getActiveDevices(5),
-        apiService.getAccessPoints(50)
+        apiService.getActiveAccessPoints(5)
       ]);
       setDevices(devicesData || []);
-      setAccessPoints(apsData || []);
+
+      let apData = activeAps || [];
+      if (!apData || apData.length === 0) {
+        apData = await apiService.getAccessPoints(50);
+      }
+      setAccessPoints(apData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -243,6 +249,12 @@ export default function ProximityHeatmap() {
       {loading ? (
         <div className="card">
           <div className="loading-state">Loading heatmap data...</div>
+        </div>
+      ) : !hasActivity ? (
+        <div className="card">
+          <div className="empty-state">
+            No recent wireless activity detected. Once new device or access point data streams in, the heatmap will update automatically.
+          </div>
         </div>
       ) : (
         <>

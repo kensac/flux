@@ -62,9 +62,7 @@ func getAccessPoints(c *gin.Context) {
 		if ssid, ok := result["ssid"].(string); ok {
 			ap.SSID = ssid
 		}
-		if channel, ok := result["channel"].(int32); ok {
-			ap.Channel = int(channel)
-		}
+		ap.Channel = toInt(result["channel"])
 		if encryption, ok := result["encryption"].(string); ok {
 			ap.Encryption = encryption
 		}

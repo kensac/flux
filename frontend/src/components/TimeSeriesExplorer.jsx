@@ -13,23 +13,114 @@ export default function TimeSeriesExplorer({ currentQuery, onResultsChange }) {
   const [aggregation, setAggregation] = useState('1h');
 
   // Fetch time-series data
+  const durationMinutesMap = {
+    '1h': 60,
+    '6h': 360,
+    '24h': 1440,
+    '7d': 10080,
+    '30d': 43200,
+  };
+
+  const aggregationMinutesMap = {
+    '1m': 1,
+    '5m': 5,
+    '1h': 60,
+  };
+
+  const buildFallbackSnapshot = async () => {
+    const [statsData, activeDevices, aps] = await Promise.all([
+      apiService.getStats(),
+      apiService.getActiveDevices(15),
+      apiService.getAccessPoints(100),
+    ]);
+
+    const deviceMetrics = (activeDevices || []).slice(0, 50).map(device => {
+      const values = device.rssi_values || [];
+      const avg = values.length ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+      const min = values.length ? Math.min(...values) : 0;
+      const max = values.length ? Math.max(...values) : 0;
+      return {
+        mac_address: device.mac_address,
+        rssi_avg: avg,
+        rssi_min: min,
+        rssi_max: max,
+        packet_count: device.packet_count || 0,
+        data_bytes: device.data_bytes || 0,
+        connected: !!device.connected,
+        vendor: device.vendor || 'Unknown',
+      };
+    });
+
+    const apMetrics = (aps || []).slice(0, 50).map(ap => {
+      const values = ap.rssi_values || [];
+      const avg = values.length ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+      const min = values.length ? Math.min(...values) : 0;
+      const max = values.length ? Math.max(...values) : 0;
+      return {
+        bssid: ap.bssid,
+        ssid: ap.ssid,
+        rssi_avg: avg,
+        rssi_min: min,
+        rssi_max: max,
+        beacon_count: ap.beacon_count || 0,
+        channel: ap.channel || 0,
+      };
+    });
+
+    return {
+      tier: aggregation,
+      snapshots: [
+        {
+          timestamp: new Date().toISOString(),
+          tier: aggregation,
+          devices: {
+            total: statsData?.total_devices ?? activeDevices.length,
+            active: statsData?.active_devices ?? activeDevices.length,
+            connected: activeDevices.filter(device => device.connected).length,
+          },
+          access_points: {
+            total: statsData?.total_aps ?? aps.length,
+            active: statsData?.active_aps ?? aps.length,
+          },
+          device_metrics: deviceMetrics,
+          ap_metrics: apMetrics,
+        },
+      ],
+      fallback: true,
+    };
+  };
+
   const fetchMetrics = async () => {
     try {
       setLoading(true);
 
-      const tierMap = {
-        '1h': { tier: '1m', limit: 60 },
-        '6h': { tier: '1m', limit: 360 },
-        '24h': { tier: '1h', limit: 24 },
-        '7d': { tier: '1h', limit: 168 },
-        '30d': { tier: '1h', limit: 720 },
+      const durationMinutes = durationMinutesMap[timeRange] || 1440;
+      const aggMinutes = aggregationMinutesMap[aggregation] || 60;
+      const limit = Math.min(1000, Math.max(24, Math.ceil(durationMinutes / aggMinutes)));
+      const end = new Date();
+      const start = new Date(end.getTime() - durationMinutes * 60000);
+
+      const params = {
+        tier: aggregation,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        limit,
       };
 
-      const params = tierMap[timeRange] || { tier: '1h', limit: 24 };
-
       const data = await apiService.getMetricsHistory(params);
+      if (!data || !data.snapshots || data.snapshots.length === 0) {
+        const fallback = await buildFallbackSnapshot();
+        setMetricsData(fallback);
+        if (onResultsChange) {
+          onResultsChange({ metrics: fallback, timeRange, metricType });
+        }
+        return;
+      }
+
       setMetricsData(data);
-      onResultsChange({ metrics: data, timeRange, metricType });
+      if (onResultsChange) {
+        onResultsChange({ metrics: data, timeRange, metricType });
+      }
     } catch (error) {
       console.error('Error fetching metrics:', error);
     } finally {
@@ -217,11 +308,12 @@ export default function TimeSeriesExplorer({ currentQuery, onResultsChange }) {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-500">
-                {chartData.length} data points
-              </span>
-            </div>
-          </div>
+          <span className="text-sm text-gray-500">
+            {chartData.length} data points
+            {metricsData?.fallback && ' (real-time snapshot)'}
+          </span>
+        </div>
+      </div>
 
           {/* Controls */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

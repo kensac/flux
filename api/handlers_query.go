@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // QueryExecuteRequest represents the request body for executing a MongoDB query
@@ -192,18 +193,28 @@ func executeQuery(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Build find options
-	findOptions := bson.M{}
-	if req.Limit > 0 {
-		findOptions["limit"] = req.Limit
-	}
+	findOptions := options.Find().SetLimit(int64(req.Limit))
 	if req.Skip > 0 {
-		findOptions["skip"] = req.Skip
+		findOptions.SetSkip(int64(req.Skip))
+	}
+
+	// Default sort order for time-based collections
+	timestampCollections := map[string]bool{
+		"device_events":       true,
+		"access_point_events": true,
+		"metrics_1m":          true,
+		"metrics_5m":          true,
+		"metrics_1h":          true,
+	}
+	if timestampCollections[req.Collection] {
+		findOptions.SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	} else {
+		findOptions.SetSort(bson.D{{Key: "_id", Value: -1}})
 	}
 
 	// Execute the find query
 	collection := db.Collection(req.Collection)
-	cursor, err := collection.Find(ctx, filter)
+	cursor, err := collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Query execution failed: %v", err)})
 		return
