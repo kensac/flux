@@ -13,18 +13,22 @@ import (
 // getAccessPoints aggregates AP data from events on demand
 func getAccessPoints(c *gin.Context) {
 	limit := parseLimit(c.Query("limit"), 100)
-	// Allow filtering by time window (default: last 7 days to reduce scan size)
-	days := parseLimit(c.Query("days"), 7)
+	// Allow filtering by time window (default: last 24 hours for faster queries)
+	hours := parseLimit(c.Query("hours"), 24)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Filter to recent data first to avoid full collection scan
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour)
 
-	// Aggregate AP data from events
+	// Aggregate AP data from events - optimized to reduce memory usage
 	pipeline := []bson.M{
+		// Filter first - use indexed timestamp field
 		{"$match": bson.M{"timestamp": bson.M{"$gte": cutoff}}},
+		// Sort before grouping to get latest records first
+		{"$sort": bson.M{"timestamp": -1}},
+		// Group by BSSID
 		{
 			"$group": bson.M{
 				"_id":          "$bssid",
@@ -37,7 +41,9 @@ func getAccessPoints(c *gin.Context) {
 				"beacon_count": bson.M{"$sum": 1},
 			},
 		},
+		// Sort groups by most recently seen
 		{"$sort": bson.M{"last_seen": -1}},
+		// Limit results
 		{"$limit": int64(limit)},
 	}
 
