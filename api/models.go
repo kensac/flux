@@ -2,7 +2,34 @@ package main
 
 import "time"
 
-// Device represents a WiFi device detected by the sniffer
+// DeviceEvent represents a single WiFi device detection event
+type DeviceEvent struct {
+	ID               string    `bson:"_id,omitempty" json:"id,omitempty"`
+	Timestamp        time.Time `bson:"timestamp" json:"timestamp"`
+	MACAddress       string    `bson:"mac_address" json:"mac_address"`
+	EventType        string    `bson:"event_type" json:"event_type"` // "probe", "connection", "disconnection", "data"
+	RSSI             int       `bson:"rssi" json:"rssi"`
+	ProbeSSID        string    `bson:"probe_ssid,omitempty" json:"probe_ssid,omitempty"`
+	Vendor           string    `bson:"vendor,omitempty" json:"vendor,omitempty"`
+	Connected        bool      `bson:"connected" json:"connected"`
+	BSSID            string    `bson:"bssid,omitempty" json:"bssid,omitempty"`
+	DataFrameCount   int       `bson:"data_frame_count,omitempty" json:"data_frame_count,omitempty"`
+	DataByteCount    int64     `bson:"data_byte_count,omitempty" json:"data_byte_count,omitempty"`
+}
+
+// AccessPointEvent represents a single WiFi access point detection event
+type AccessPointEvent struct {
+	ID         string    `bson:"_id,omitempty" json:"id,omitempty"`
+	Timestamp  time.Time `bson:"timestamp" json:"timestamp"`
+	BSSID      string    `bson:"bssid" json:"bssid"`
+	EventType  string    `bson:"event_type" json:"event_type"` // "beacon"
+	SSID       string    `bson:"ssid" json:"ssid"`
+	Channel    int       `bson:"channel" json:"channel"`
+	RSSI       int       `bson:"rssi" json:"rssi"`
+	Encryption string    `bson:"encryption,omitempty" json:"encryption,omitempty"`
+}
+
+// Device represents aggregated device data (computed from events)
 type Device struct {
 	MACAddress       string    `bson:"mac_address" json:"mac_address"`
 	FirstSeen        time.Time `bson:"first_seen" json:"first_seen"`
@@ -18,7 +45,7 @@ type Device struct {
 	DataBytes        int64     `bson:"data_bytes" json:"data_bytes"`
 }
 
-// AccessPoint represents a WiFi access point detected by the sniffer
+// AccessPoint represents aggregated access point data (computed from events)
 type AccessPoint struct {
 	BSSID       string    `bson:"bssid" json:"bssid"`
 	SSID        string    `bson:"ssid" json:"ssid"`

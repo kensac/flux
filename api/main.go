@@ -57,18 +57,15 @@ func main() {
 	// Initialize global database handle
 	db = client.Database("flux")
 
-	// Initialize historical data collections with TTL indexes
-	if err := initHistoricalCollections(context.Background()); err != nil {
-		log.Printf("Warning: Failed to initialize historical collections: %v", err)
+	// Initialize event collections with TTL indexes (30-day retention)
+	if err := initEventCollections(context.Background()); err != nil {
+		log.Printf("Warning: Failed to initialize event collections: %v", err)
 	}
 
 	// Load channel hopping configuration
 	if err := loadChannelConfig(); err != nil {
 		log.Printf("Warning: Failed to load channel config: %v", err)
 	}
-
-	// Start background aggregation services
-	go startAggregationWorkers()
 
 	// Setup Gin router
 	r := gin.Default()
@@ -150,6 +147,10 @@ func main() {
 	r.PUT("/config/channel-hopping", updateChannelConfig)
 	api.GET("/config/channel-hopping", getChannelConfig)
 	api.PUT("/config/channel-hopping", updateChannelConfig)
+
+	// Query execution endpoint (read-only MongoDB queries)
+	r.POST("/query/execute", executeQuery)
+	api.POST("/query/execute", executeQuery)
 
 	// Start server
 	port := getEnv("PORT", "8080")

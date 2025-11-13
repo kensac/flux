@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, RefreshCw, ArrowLeft, Download } from 'lucide-react';
+import { Building2, RefreshCw, ArrowLeft, Download, Database } from 'lucide-react';
 import { apiService } from './services/api';
 import OperationsStatus from './components/OperationsStatus';
 import EnergyOptimization from './components/EnergyOptimization';
@@ -125,6 +125,10 @@ export default function Operations() {
                 <Download className="icon-sm" />
                 Export
               </button>
+              <a href="/app/data-platform" className="btn btn-secondary btn-with-icon">
+                <Database className="icon-sm" />
+                Data Platform
+              </a>
               <a href="/app/" className="btn btn-secondary btn-with-icon">
                 <ArrowLeft className="icon-sm" />
                 Main Dashboard

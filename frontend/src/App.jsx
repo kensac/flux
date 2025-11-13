@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Radio, RefreshCw, Building2, Download } from 'lucide-react';
+import { Radio, RefreshCw, Building2, Download, Database } from 'lucide-react';
 import { apiService } from './services/api';
 import StatsCard from './components/StatsCard';
 import DeviceTable from './components/DeviceTable';
@@ -132,6 +132,10 @@ function App() {
                   </button>
                 </div>
               </div>
+              <a href="/app/data-platform" className="btn btn-secondary btn-with-icon">
+                <Database className="icon-sm" />
+                Data Platform
+              </a>
               <a href="/app/operations" className="btn btn-secondary btn-with-icon">
                 <Building2 className="icon-sm" />
                 Operations

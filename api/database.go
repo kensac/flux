@@ -13,20 +13,20 @@ var (
 	db *mongo.Database
 )
 
-// initHistoricalCollections creates TTL indexes for automatic data expiration
-func initHistoricalCollections(ctx context.Context) error {
-	// Collection names for different granularities
+// initEventCollections creates TTL indexes for automatic event expiration (30 days)
+func initEventCollections(ctx context.Context) error {
+	// Event collections with 30-day TTL
 	collections := []struct {
 		name string
 		ttl  int32 // seconds
 	}{
-		{"metrics_1m", 24 * 60 * 60},     // 24 hours
-		{"metrics_5m", 3 * 24 * 60 * 60}, // 3 days
-		{"metrics_1h", 7 * 24 * 60 * 60}, // 7 days
+		{"device_events", 30 * 24 * 60 * 60},       // 30 days
+		{"access_point_events", 30 * 24 * 60 * 60}, // 30 days
 	}
 
 	for _, coll := range collections {
-		indexModel := mongo.IndexModel{
+		// TTL index on timestamp
+		ttlIndex := mongo.IndexModel{
 			Keys: bson.D{
 				{Key: "timestamp", Value: 1},
 			},
@@ -35,24 +35,51 @@ func initHistoricalCollections(ctx context.Context) error {
 				SetName("ttl_index"),
 		}
 
-		_, err := db.Collection(coll.name).Indexes().CreateOne(ctx, indexModel)
+		_, err := db.Collection(coll.name).Indexes().CreateOne(ctx, ttlIndex)
 		if err != nil {
 			log.Printf("Failed to create TTL index for %s: %v", coll.name, err)
 			return err
 		}
-		log.Printf("Created TTL index for %s (retention: %d seconds)", coll.name, coll.ttl)
+		log.Printf("Created TTL index for %s (retention: %d days)", coll.name, coll.ttl/(24*60*60))
 
-		// Create compound index for efficient querying
-		compoundIndex := mongo.IndexModel{
+		// Index for efficient MAC/BSSID queries
+		if coll.name == "device_events" {
+			macIndex := mongo.IndexModel{
+				Keys: bson.D{
+					{Key: "mac_address", Value: 1},
+					{Key: "timestamp", Value: -1},
+				},
+				Options: options.Index().SetName("mac_timestamp_index"),
+			}
+			_, err = db.Collection(coll.name).Indexes().CreateOne(ctx, macIndex)
+			if err != nil {
+				log.Printf("Failed to create MAC index for %s: %v", coll.name, err)
+			}
+		} else {
+			bssidIndex := mongo.IndexModel{
+				Keys: bson.D{
+					{Key: "bssid", Value: 1},
+					{Key: "timestamp", Value: -1},
+				},
+				Options: options.Index().SetName("bssid_timestamp_index"),
+			}
+			_, err = db.Collection(coll.name).Indexes().CreateOne(ctx, bssidIndex)
+			if err != nil {
+				log.Printf("Failed to create BSSID index for %s: %v", coll.name, err)
+			}
+		}
+
+		// Index for event type filtering
+		eventTypeIndex := mongo.IndexModel{
 			Keys: bson.D{
-				{Key: "tier", Value: 1},
+				{Key: "event_type", Value: 1},
 				{Key: "timestamp", Value: -1},
 			},
-			Options: options.Index().SetName("tier_timestamp_index"),
+			Options: options.Index().SetName("event_type_timestamp_index"),
 		}
-		_, err = db.Collection(coll.name).Indexes().CreateOne(ctx, compoundIndex)
+		_, err = db.Collection(coll.name).Indexes().CreateOne(ctx, eventTypeIndex)
 		if err != nil {
-			log.Printf("Failed to create compound index for %s: %v", coll.name, err)
+			log.Printf("Failed to create event type index for %s: %v", coll.name, err)
 		}
 	}
 

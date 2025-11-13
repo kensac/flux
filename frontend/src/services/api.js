@@ -104,12 +104,63 @@ export const apiService = {
     // Save to localStorage like operations.html does
     const stored = localStorage.getItem('flux_ops_config');
     const fullConfig = stored ? JSON.parse(stored) : {};
-    
+
     // Merge the new config with existing
     const updated = { ...fullConfig, ...config };
     localStorage.setItem('flux_ops_config', JSON.stringify(updated));
-    
+
     return updated;
+  },
+
+  // Data Platform - Advanced Query Methods
+  queryDevices: async (queryParams = {}) => {
+    const { filters = [], timeRange = '1h', sortBy = 'last_seen', sortOrder = 'desc', limit = 100 } = queryParams;
+
+    // For now, use existing endpoints and apply client-side filtering
+    // In a real implementation, these filters would be sent to the backend
+    const timeRangeMap = {
+      '5m': 5, '15m': 15, '1h': 60, '6h': 360, '24h': 1440,
+      '7d': 10080, '30d': 43200, 'all': undefined
+    };
+
+    const minutes = timeRangeMap[timeRange];
+    const devices = minutes
+      ? await apiService.getActiveDevices(minutes)
+      : await apiService.getDevices(limit);
+
+    return devices;
+  },
+
+  queryAccessPoints: async (queryParams = {}) => {
+    const { limit = 100 } = queryParams;
+    const aps = await apiService.getAccessPoints(limit);
+    return aps;
+  },
+
+  // Device Segmentation
+  getDeviceSegments: async (segmentType = 'vendor') => {
+    // This would ideally be a backend endpoint
+    // For now, we fetch all devices and segment client-side
+    const devices = await apiService.getDevices(500);
+    return { devices, segmentType };
+  },
+
+  // Export data
+  exportData: async (dataType = 'all') => {
+    const [stats, devices, aps, metrics] = await Promise.all([
+      apiService.getStats(),
+      apiService.getDevices(1000),
+      apiService.getAccessPoints(500),
+      apiService.getMetricsHistory({ tier: '1h', limit: 168 })
+    ]);
+
+    return {
+      stats,
+      devices,
+      accessPoints: aps,
+      metrics,
+      exportedAt: new Date().toISOString()
+    };
   },
 };
 
